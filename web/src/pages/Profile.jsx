@@ -1,0 +1,263 @@
+import React, { useState } from 'react';
+import { useApi, useUserId } from '../hooks/useApi';
+
+function StatBox({ label, value, color }) {
+  return (
+    <div style={{
+      background: '#111118',
+      border: '1px solid rgba(255,255,255,0.07)',
+      borderRadius: '10px',
+      padding: '14px 16px',
+      textAlign: 'center',
+    }}>
+      <div style={{ fontSize: '20px', fontWeight: 700, color: color || '#e2e2e8', marginBottom: 3 }}>
+        {value}
+      </div>
+      <div style={{ fontSize: '11px', color: '#6060a0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function statusColor(s) {
+  if (s === 'resolved') return '#22c55e';
+  if (s === 'active')   return '#60a5fa';
+  if (s === 'resolving') return '#f59e0b';
+  return '#6060a0';
+}
+
+export default function Profile({ profileId }) {
+  const viewerId = useUserId();
+  const { data, loading, error, refetch } = useApi(`/api/users/${profileId}`, {
+    params: viewerId ? { userId: viewerId } : {},
+  });
+
+  const [following, setFollowing] = useState(null);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  const user           = data?.user;
+  const marketsCreated = data?.marketsCreated || [];
+  const recentBets     = data?.recentBets     || [];
+  const totalVolume    = data?.totalVolume     ?? 0;
+  const isTopCreator   = data?.isTopCreator    ?? false;
+
+  const isFollowing = following !== null ? following : (data?.isFollowing ?? false);
+  const canFollow = viewerId && viewerId !== profileId;
+
+  const winRate = user && user.totalBets > 0
+    ? ((user.wonBets / user.totalBets) * 100).toFixed(1)
+    : '—';
+
+  async function handleFollow() {
+    if (!canFollow || followLoading) return;
+    setFollowLoading(true);
+    try {
+      const base = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${base}/api/users/${profileId}/follow?userId=${viewerId}`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      setFollowing(json.following);
+    } catch (e) {
+      // ignore
+    } finally {
+      setFollowLoading(false);
+    }
+  }
+
+  return (
+    <div style={{ maxWidth: '700px', margin: '0 auto', padding: '24px 16px' }}>
+      <a href="/leaderboard" style={{ color: '#a78bfa', fontSize: '13px', textDecoration: 'none' }}>
+        ← Classement
+      </a>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '60px', color: '#6060a0', fontSize: '13px' }}>
+          Chargement…
+        </div>
+      )}
+
+      {error && (
+        <div style={{
+          marginTop: '20px', padding: '12px', borderRadius: '8px',
+          background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px',
+        }}>
+          Erreur: {error}
+        </div>
+      )}
+
+      {!loading && user && (
+        <>
+          {/* Header */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+            marginTop: '20px', marginBottom: '24px', gap: 12,
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#e2e2e8', margin: 0 }}>
+                  {user.displayName || user.username || `User ${profileId.slice(0, 8)}`}
+                </h1>
+                {isTopCreator && (
+                  <span style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: 4,
+                    background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+                    fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)',
+                  }}>
+                    ⭐ TOP CRÉATEUR
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '12px', color: '#6060a0', marginTop: 4, fontFamily: 'monospace' }}>
+                ID {profileId}
+              </p>
+              <p style={{ fontSize: '12px', color: '#9090a0', marginTop: 2 }}>
+                Réputation : <span style={{ color: '#f59e0b', fontWeight: 600 }}>{user.reputation || 50}/100</span>
+                {' · '}
+                {(user.followedBy || []).length} follower{(user.followedBy || []).length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {canFollow && (
+              <button
+                onClick={handleFollow}
+                disabled={followLoading}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: isFollowing ? '1px solid rgba(255,255,255,0.15)' : '1px solid #a78bfa',
+                  background: isFollowing ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.15)',
+                  color: isFollowing ? '#9090a0' : '#a78bfa',
+                  fontSize: '13px', fontWeight: 600, cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                {followLoading ? '…' : isFollowing ? 'Suivi ✓' : '+ Suivre'}
+              </button>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+            gap: '10px', marginBottom: '28px',
+          }}>
+            <StatBox label="Marchés créés" value={marketsCreated.length} color="#60a5fa" />
+            <StatBox label="Volume généré" value={`${totalVolume.toLocaleString('fr-FR')} USDC`} color="#a78bfa" />
+            <StatBox label="Paris placés"  value={user.totalBets || 0} color="#9090a0" />
+            <StatBox label="Paris gagnés"  value={user.wonBets || 0}   color="#22c55e" />
+            <StatBox
+              label="Win rate"
+              value={winRate !== '—' ? `${winRate}%` : '—'}
+              color={parseFloat(winRate) >= 50 ? '#22c55e' : '#ef4444'}
+            />
+            <StatBox label="Gains totaux"  value={`${(user.totalEarned || 0).toFixed(2)}`} color="#22c55e" />
+          </div>
+
+          {/* Markets created */}
+          {marketsCreated.length > 0 && (
+            <div style={{ marginBottom: '28px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e2e8', marginBottom: '12px' }}>
+                Marchés créés
+              </h2>
+              <div style={{
+                background: '#111118',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '10px', overflow: 'hidden',
+              }}>
+                {marketsCreated.map((m, i) => {
+                  const vol = (m.totalYes || 0) + (m.totalNo || 0);
+                  return (
+                    <a key={m._id || i} href={`/market/${m._id}`} style={{ textDecoration: 'none' }}>
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        padding: '12px 16px',
+                        borderBottom: i < marketsCreated.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                        fontSize: '13px', gap: 12,
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <span style={{
+                          color: '#e2e2e8', overflow: 'hidden',
+                          textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+                        }}>
+                          {m.title}
+                        </span>
+                        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+                          <span style={{ color: '#9090a0', fontSize: '12px' }}>
+                            {vol.toLocaleString('fr-FR')} USDC
+                          </span>
+                          <span style={{
+                            fontSize: '11px', fontWeight: 700, padding: '2px 7px',
+                            borderRadius: 4, color: statusColor(m.status),
+                            background: `${statusColor(m.status)}20`,
+                          }}>
+                            {m.status === 'resolved' ? (m.outcome || 'RÉS.') : m.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Recent bets */}
+          {recentBets.length > 0 && (
+            <div>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e2e8', marginBottom: '12px' }}>
+                Paris récents
+              </h2>
+              <div style={{
+                background: '#111118',
+                border: '1px solid rgba(255,255,255,0.07)',
+                borderRadius: '10px', overflow: 'hidden',
+              }}>
+                {recentBets.map((bet, i) => (
+                  <div key={bet._id || i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '11px 16px',
+                    borderBottom: i < recentBets.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                    fontSize: '13px',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{
+                        padding: '2px 7px', borderRadius: 4,
+                        background: bet.side === 'YES' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                        color: bet.side === 'YES' ? '#22c55e' : '#ef4444',
+                        fontWeight: 700, fontSize: '11px',
+                      }}>
+                        {bet.side}
+                      </span>
+                      <span style={{ color: '#9090a0' }}>
+                        {new Date(bet.placedAt).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: '#e2e2e8', fontWeight: 600 }}>{bet.amount} USDC</span>
+                      <span style={{
+                        padding: '2px 8px', borderRadius: 999, fontSize: '11px', fontWeight: 600,
+                        color: bet.status === 'won' ? '#22c55e' : bet.status === 'lost' ? '#ef4444' : '#9090a0',
+                        background: bet.status === 'won'
+                          ? 'rgba(34,197,94,0.1)'
+                          : bet.status === 'lost'
+                          ? 'rgba(239,68,68,0.1)'
+                          : 'rgba(255,255,255,0.05)',
+                      }}>
+                        {bet.status === 'won' ? 'Gagné' : bet.status === 'lost' ? 'Perdu' : 'En cours'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

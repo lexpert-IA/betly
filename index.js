@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const logger = require('./src/utils/logger');
 const apiRouter = require('./src/api/router');
+const { startResolver } = require('./src/agents/resolver');
 
 async function main() {
   logger.info('BETLY démarré');
@@ -27,6 +28,9 @@ async function main() {
   app.listen(config.port, () => {
     logger.info(`API BETLY démarrée sur le port ${config.port}`);
   });
+
+  // ── Oracle resolver (background) ──────────────────────────────────────────
+  startResolver();
 }
 
 main();

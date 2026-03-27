@@ -4,6 +4,7 @@ const Market = require('../../db/models/Market');
 const Bet = require('../../db/models/Bet');
 const Comment = require('../../db/models/Comment');
 const User = require('../../db/models/User');
+const Vote = require('../../db/models/Vote');
 const { analyzeMarket } = require('../agents/moderator');
 const { checkForFraud } = require('../agents/watcher');
 const logger = require('../utils/logger');
@@ -422,6 +423,75 @@ router.post('/markets/:id/comments', async (req, res) => {
   }
 });
 
+// ─── POST /api/markets/:id/vote ──────────────────────────────────────────────
+router.post('/markets/:id/vote', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+
+    const { id } = req.params;
+    const { vote } = req.body;
+
+    if (!vote || !['YES', 'NO'].includes(vote)) {
+      return res.status(400).json({ error: 'vote must be YES or NO' });
+    }
+
+    if (id.startsWith('mock-')) {
+      return res.json({ success: true, message: 'Vote enregistré (marché demo)' });
+    }
+
+    const market = await Market.findById(id);
+    if (!market) return res.status(404).json({ error: 'Market not found' });
+
+    // One vote per user per market
+    const existing = await Vote.findOne({ userId, marketId: id });
+    if (existing) {
+      existing.vote = vote;
+      await existing.save();
+      return res.json({ success: true, updated: true });
+    }
+
+    // Weight by user reputation (1-3)
+    const user = await User.findOne({ telegramId: userId }).lean();
+    const weight = user ? Math.min(3, Math.max(1, Math.floor((user.reputation || 50) / 34))) : 1;
+
+    await Vote.create({ userId, marketId: id, vote, weight });
+
+    // Tally
+    const votes = await Vote.find({ marketId: id }).lean();
+    const yesCount = votes.filter(v => v.vote === 'YES').length;
+    const noCount  = votes.filter(v => v.vote === 'NO').length;
+
+    logger.info(`Vote: ${userId} → ${vote} on market ${id} (${yesCount}Y / ${noCount}N)`);
+    res.status(201).json({ success: true, yesCount, noCount, total: votes.length });
+  } catch (err) {
+    logger.error(`POST /markets/:id/vote error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/markets/:id/votes ───────────────────────────────────────────────
+router.get('/markets/:id/votes', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (id.startsWith('mock-')) {
+      return res.json({ yesCount: 0, noCount: 0, total: 0, userVote: null });
+    }
+
+    const { userId } = req.query;
+    const votes = await Vote.find({ marketId: id }).lean();
+    const yesCount = votes.filter(v => v.vote === 'YES').length;
+    const noCount  = votes.filter(v => v.vote === 'NO').length;
+    const userVote = userId ? (votes.find(v => v.userId === userId)?.vote || null) : null;
+
+    res.json({ yesCount, noCount, total: votes.length, userVote });
+  } catch (err) {
+    logger.error(`GET /markets/:id/votes error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/leaderboard ────────────────────────────────────────────────────
 router.get('/leaderboard', async (req, res) => {
   try {
@@ -443,7 +513,13 @@ router.get('/leaderboard', async (req, res) => {
       { $limit: 20 },
     ]);
 
-    res.json({ topBettors, topCreators });
+    const topMarkets = await Market.find({ status: { $in: ['active', 'resolved'] } })
+      .sort({ totalYes: -1 })
+      .limit(10)
+      .select('title totalYes totalNo commentsCount resolutionDate status outcome')
+      .lean();
+
+    res.json({ topBettors, topCreators, topMarkets });
   } catch (err) {
     logger.error(`GET /leaderboard error: ${err.message}`);
     res.status(500).json({ error: err.message });
@@ -479,6 +555,84 @@ router.get('/account', async (req, res) => {
     res.json({ user, recentBets });
   } catch (err) {
     logger.error(`GET /account error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/users/:id ──────────────────────────────────────────────────────
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId: viewerId } = req.query; // who is viewing
+
+    let user = await User.findOne({ telegramId: id }).lean();
+    if (!user) {
+      user = {
+        telegramId: id,
+        displayName: `User ${id.slice(0, 6)}`,
+        balance: 0, totalBets: 0, wonBets: 0,
+        totalEarned: 0, reputation: 50,
+        followedBy: [], createdAt: new Date(),
+      };
+    }
+
+    // Markets created by this user
+    const marketsCreated = await Market.find({ creatorId: id })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('title status totalYes totalNo resolutionDate outcome createdAt')
+      .lean();
+
+    const totalVolume = marketsCreated.reduce(
+      (s, m) => s + (m.totalYes || 0) + (m.totalNo || 0), 0
+    );
+
+    // Recent bets
+    const recentBets = await Bet.find({ userId: id })
+      .sort({ placedAt: -1 })
+      .limit(5)
+      .lean();
+
+    const isFollowing = viewerId ? (user.followedBy || []).includes(viewerId) : false;
+    const isTopCreator = marketsCreated.length >= 3 && totalVolume >= 100;
+
+    res.json({
+      user,
+      marketsCreated,
+      recentBets,
+      totalVolume,
+      isFollowing,
+      isTopCreator,
+    });
+  } catch (err) {
+    logger.error(`GET /users/:id error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/users/:id/follow ───────────────────────────────────────────────
+router.post('/users/:id/follow', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+
+    const { id } = req.params;
+    if (id === userId) return res.status(400).json({ error: 'Cannot follow yourself' });
+
+    const target = await User.findOne({ telegramId: id });
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    const isFollowing = target.followedBy.includes(userId);
+    if (isFollowing) {
+      target.followedBy = target.followedBy.filter(f => f !== userId);
+    } else {
+      target.followedBy.push(userId);
+    }
+    await target.save();
+
+    res.json({ following: !isFollowing, followers: target.followedBy.length });
+  } catch (err) {
+    logger.error(`POST /users/:id/follow error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });

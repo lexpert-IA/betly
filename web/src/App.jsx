@@ -4,12 +4,14 @@ import Feed from './pages/Feed';
 import CreateMarket from './pages/CreateMarket';
 import Leaderboard from './pages/Leaderboard';
 import Account from './pages/Account';
+import Profile from './pages/Profile';
 
 function getPage() {
   const path = window.location.pathname;
   if (path === '/create') return 'create';
   if (path === '/leaderboard') return 'leaderboard';
   if (path === '/account') return 'account';
+  if (path.startsWith('/profile/')) return 'profile';
   if (path.startsWith('/market/')) return 'market';
   return 'feed';
 }
@@ -56,6 +58,9 @@ export default function App() {
         {page === 'leaderboard' && <Leaderboard />}
         {page === 'account' && <Account />}
         {page === 'market' && <MarketDetail />}
+        {page === 'profile' && (
+          <Profile profileId={window.location.pathname.split('/profile/')[1]} />
+        )}
       </main>
     </div>
   );
