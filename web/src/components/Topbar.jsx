@@ -2,10 +2,10 @@ import React from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
 
 const LINKS = [
-  { label: 'Feed', path: '/' },
-  { label: 'Créer', path: '/create' },
-  { label: 'Leaderboard', path: '/leaderboard' },
-  { label: 'Mon compte', path: '/account' },
+  { label: '🎯 Marchés',     path: '/'            },
+  { label: '📈 BETLY Copy',  path: '/copy'         },
+  { label: '🏆 Leaderboard', path: '/leaderboard'  },
+  { label: '👤 Mon compte',  path: '/account'      },
 ];
 
 export default function Topbar() {
@@ -49,22 +49,25 @@ export default function Topbar() {
       </a>
 
       {/* Nav */}
-      <nav style={{ display: 'flex', gap: '4px', flex: 1 }}>
+      <nav style={{ display: 'flex', gap: '2px', flex: 1 }}>
         {LINKS.map(({ label, path }) => {
-          const isActive = currentPath === path;
+          const isActive = path === '/'
+            ? currentPath === '/'
+            : currentPath.startsWith(path);
           return (
             <a
               key={path}
               href={path}
               style={{
                 textDecoration: 'none',
-                padding: '6px 12px',
+                padding: '6px 11px',
                 borderRadius: '6px',
                 fontSize: '13px',
                 fontWeight: isActive ? 600 : 400,
                 color: isActive ? '#a78bfa' : '#9090a0',
                 background: isActive ? 'rgba(167,139,250,0.1)' : 'transparent',
                 transition: 'all 0.15s',
+                whiteSpace: 'nowrap',
               }}
             >
               {label}

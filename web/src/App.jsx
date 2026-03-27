@@ -5,10 +5,12 @@ import CreateMarket from './pages/CreateMarket';
 import Leaderboard from './pages/Leaderboard';
 import Account from './pages/Account';
 import Profile from './pages/Profile';
+import BetlyCopy from './pages/BetlyCopy';
 
 function getPage() {
   const path = window.location.pathname;
   if (path === '/create') return 'create';
+  if (path === '/copy') return 'copy';
   if (path === '/leaderboard') return 'leaderboard';
   if (path === '/account') return 'account';
   if (path.startsWith('/profile/')) return 'profile';
@@ -55,6 +57,7 @@ export default function App() {
       <main style={{ paddingBottom: '48px' }}>
         {page === 'feed' && <Feed />}
         {page === 'create' && <CreateMarket />}
+        {page === 'copy' && <BetlyCopy />}
         {page === 'leaderboard' && <Leaderboard />}
         {page === 'account' && <Account />}
         {page === 'market' && <MarketDetail />}
