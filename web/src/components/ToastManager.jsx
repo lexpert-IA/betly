@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { fireWin } from '../utils/confetti';
 
 // Global toast emitter
 let emitToast = null;
@@ -22,9 +23,9 @@ function ToastItem({ id, message, type, duration, onRemove }) {
   const style = TOAST_STYLES[type] || TOAST_STYLES.info;
 
   useEffect(() => {
-    // Appear
     requestAnimationFrame(() => setVisible(true));
-    // Disappear
+    // Fire confetti on win
+    if (type === 'win') fireWin();
     const t = setTimeout(() => {
       setVisible(false);
       setTimeout(() => onRemove(id), 300);
@@ -33,24 +34,28 @@ function ToastItem({ id, message, type, duration, onRemove }) {
   }, []);
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '12px 16px',
-      background: style.bg,
-      border: `1px solid ${style.border}`,
-      borderRadius: 10,
-      boxShadow: '0 8px 24px rgba(0,0,0,.5)',
-      backdropFilter: 'blur(12px)',
-      maxWidth: 320, minWidth: 240,
-      transform: visible ? 'translateX(0)' : 'translateX(360px)',
-      opacity: visible ? 1 : 0,
-      transition: 'all .3s cubic-bezier(.4,0,.2,1)',
-      cursor: 'pointer',
-    }}
+    <div
+      className={type === 'win' ? 'toast-win' : ''}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 16px',
+        background: style.bg,
+        border: `1px solid ${style.border}`,
+        borderRadius: 10,
+        boxShadow: type === 'win'
+          ? '0 8px 32px rgba(168,85,247,0.5), 0 0 0 1px rgba(168,85,247,0.3)'
+          : '0 8px 24px rgba(0,0,0,.5)',
+        backdropFilter: 'blur(12px)',
+        maxWidth: 340, minWidth: 240,
+        transform: visible ? 'translateX(0)' : 'translateX(360px)',
+        opacity: visible ? 1 : 0,
+        transition: 'transform .3s cubic-bezier(.4,0,.2,1), opacity .3s',
+        cursor: 'pointer',
+      }}
       onClick={() => { setVisible(false); setTimeout(() => onRemove(id), 300); }}
     >
-      <span style={{ fontSize: 18, flexShrink: 0 }}>{style.icon}</span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#f8fafc', lineHeight: 1.4 }}>
+      <span style={{ fontSize: type === 'win' ? 22 : 18, flexShrink: 0 }}>{style.icon}</span>
+      <span style={{ fontSize: 13, fontWeight: type === 'win' ? 700 : 500, color: '#f8fafc', lineHeight: 1.4 }}>
         {message}
       </span>
     </div>

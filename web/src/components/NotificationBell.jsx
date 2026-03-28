@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { toast } from './ToastManager';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 
@@ -38,9 +39,15 @@ export default function NotificationBell({ onNewNotif }) {
       const res = await fetch(`${BASE}/api/notifications/unread-count?userId=${encodeURIComponent(userId)}`);
       const data = await res.json();
       const newCount = data.count || 0;
-      // Trigger toast callback when new notifications arrive
       if (newCount > prevCount.current && prevCount.current !== -1) {
         onNewNotif?.(newCount - prevCount.current);
+        // Check for win notifications to fire confetti toast
+        try {
+          const nRes = await fetch(`${BASE}/api/notifications?userId=${encodeURIComponent(userId)}`);
+          const nData = await nRes.json();
+          const fresh = (nData.notifications || []).filter(n => !n.read && n.type === 'bet_won');
+          fresh.forEach(n => toast(n.message, 'win', 5000));
+        } catch {}
       }
       prevCount.current = newCount;
       setCount(newCount);

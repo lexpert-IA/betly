@@ -185,16 +185,16 @@ function SkeletonCard() {
       borderRadius: 16, padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
     }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', animation: 'pulse 1.5s infinite' }} />
+        <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%' }} />
         <div style={{ flex: 1 }}>
-          <div style={{ height: 11, width: '50%', borderRadius: 4, background: 'rgba(255,255,255,0.07)', animation: 'pulse 1.5s infinite', marginBottom: 5 }} />
-          <div style={{ height: 9, width: '30%', borderRadius: 4, background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} />
+          <div className="skeleton" style={{ height: 11, width: '50%', borderRadius: 4, marginBottom: 5 }} />
+          <div className="skeleton" style={{ height: 9, width: '30%', borderRadius: 4 }} />
         </div>
       </div>
       {[90, 70].map((w, i) => (
-        <div key={i} style={{ height: i === 0 ? 14 : 11, width: `${w}%`, borderRadius: 4, background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.5s infinite' }} />
+        <div key={i} className="skeleton" style={{ height: i === 0 ? 14 : 11, width: `${w}%`, borderRadius: 4 }} />
       ))}
-      <div style={{ height: 40, borderRadius: 8, background: 'rgba(255,255,255,0.05)', animation: 'pulse 1.5s infinite' }} />
+      <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
     </div>
   );
 }

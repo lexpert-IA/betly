@@ -59,3 +59,45 @@ body {
 
 .fade-up   { animation: fade-up 0.35s ease both; }
 .pulse-dot { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* ── Micro interactions ────────────────────────────────── */
+button, [role="button"] { -webkit-tap-highlight-color: transparent; }
+
+/* Button press scale */
+.btn-press:active { transform: scale(0.97) !important; }
+
+/* Page fade-in */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-in 0.3s ease both; }
+
+/* YES/NO bar grow animation */
+@keyframes bar-fill {
+  from { width: 0 !important; }
+}
+.bar-animated { animation: bar-fill 0.6s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+/* Toast win glow */
+@keyframes toast-win-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(168,85,247,0.4); }
+  50%       { box-shadow: 0 0 28px rgba(168,85,247,0.8); }
+}
+.toast-win { animation: toast-win-pulse 0.8s ease-in-out 3; }
+
+/* Mobile safe area */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+}

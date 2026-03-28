@@ -181,6 +181,7 @@ export default function MarketCard({ market, onBetPlaced }) {
       {betSide === null && (
         <div style={{ display: 'flex', gap: 8 }}>
           <button
+            className="btn-press"
             onClick={() => setBetSide('YES')}
             style={{
               flex: 1, padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -193,6 +194,7 @@ export default function MarketCard({ market, onBetPlaced }) {
             🟣 Miser OUI
           </button>
           <button
+            className="btn-press"
             onClick={() => setBetSide('NO')}
             style={{
               flex: 1, padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer',

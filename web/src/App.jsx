@@ -49,11 +49,14 @@ function AppInner() {
         alignItems: 'flex-start',
       }}>
         {/* Main content */}
-        <main style={{
-          flex: 1,
-          minWidth: 0,
-          paddingBottom: isMobile ? 76 : 48, // extra space for bottom nav
-        }}>
+        <main
+          className="page-enter"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            paddingBottom: isMobile ? 76 : 48,
+          }}
+        >
           {page === 'feed'        && <Feed />}
           {page === 'create'      && <CreateMarket />}
           {page === 'copy'        && <BetlyCopy />}
