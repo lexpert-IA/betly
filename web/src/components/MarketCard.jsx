@@ -128,14 +128,17 @@ export default function MarketCard({ market, onBetPlaced }) {
       </div>
 
       {/* Question */}
-      <h3 style={{
-        fontSize: 15, fontWeight: 700, color: '#f8fafc',
-        lineHeight: 1.4,
-        display: '-webkit-box', WebkitLineClamp: 2,
-        WebkitBoxOrient: 'vertical', overflow: 'hidden',
-      }}>
-        {market.title}
-      </h3>
+      <a href={`/market/${market._id}`} style={{ textDecoration: 'none' }}>
+        <h3 style={{
+          fontSize: 15, fontWeight: 700, color: '#f8fafc',
+          lineHeight: 1.4,
+          display: '-webkit-box', WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          margin: 0,
+        }}>
+          {market.title}
+        </h3>
+      </a>
 
       {/* YES/NO bars */}
       <BetBar totalYes={market.totalYes} totalNo={market.totalNo} />

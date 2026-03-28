@@ -637,4 +637,38 @@ router.post('/users/:id/follow', async (req, res) => {
   }
 });
 
+// ─── GET /api/markets/:id/activity ───────────────────────────────────────────
+router.get('/markets/:id/activity', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 50);
+    if (id.startsWith('mock-')) return res.json({ items: [] });
+    const [bets, comments] = await Promise.all([
+      Bet.find({ marketId: id }).sort({ placedAt: -1 }).limit(limit).lean(),
+      Comment.find({ marketId: id }).sort({ createdAt: -1 }).limit(limit).lean(),
+    ]);
+    const items = [
+      ...bets.map(b => ({
+        type: 'bet',
+        side: b.side,
+        amount: b.amount,
+        userId: b.userId.slice(0, 4) + '****',
+        date: b.placedAt,
+      })),
+      ...comments.map(c => ({
+        type: 'comment',
+        content: c.content,
+        userId: c.userId,
+        likes: c.likes,
+        id: c._id,
+        date: c.createdAt,
+      })),
+    ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, limit);
+    res.json({ items });
+  } catch (err) {
+    logger.error(`GET /markets/:id/activity error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
