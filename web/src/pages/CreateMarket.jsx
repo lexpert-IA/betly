@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import AiAnalysis from '../components/AiAnalysis';
 import { useUserId } from '../hooks/useApi';
 
+const TAG_SUGGESTIONS = {
+  sport:     ['football', 'nba', 'tennis', 'euro2026', 'ligue1'],
+  crypto:    ['bitcoin', 'ethereum', 'defi', 'solana', 'altcoin'],
+  politique: ['france', 'elections', 'macron', 'ue', '2027'],
+  culture:   ['cinema', 'netflix', 'musique', 'jeux', 'series'],
+  autre:     ['ia', 'tech', 'science', 'startup', 'economie'],
+};
+
 export default function CreateMarket() {
   const userId = useUserId();
   const [form, setForm] = useState({
@@ -9,7 +17,9 @@ export default function CreateMarket() {
     description: '',
     resolutionDate: '',
     minBet: 1,
+    tags: [],
   });
+  const [tagInput, setTagInput] = useState('');
   const [analysis, setAnalysis] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -195,6 +205,80 @@ export default function CreateMarket() {
             onFocus={e => e.target.style.borderColor = 'rgba(167,139,250,0.5)'}
             onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
           />
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label style={labelStyle}>Tags (max 3, optionnel)</label>
+          {/* Current tags */}
+          {form.tags.length > 0 && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {form.tags.map(tag => (
+                <span key={tag} style={{
+                  padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
+                  background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
+                  color: '#a855f7', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                }}
+                onClick={() => setForm(f => ({ ...f, tags: f.tags.filter(t => t !== tag) }))}
+                title="Cliquer pour supprimer"
+                >
+                  #{tag} ×
+                </span>
+              ))}
+            </div>
+          )}
+          {/* Input */}
+          {form.tags.length < 3 && (
+            <input
+              type="text"
+              placeholder="Tape un tag et appuie sur Entrée..."
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              onKeyDown={e => {
+                if ((e.key === 'Enter' || e.key === ' ') && tagInput.trim().length >= 2) {
+                  e.preventDefault();
+                  const clean = tagInput.trim();
+                  if (!form.tags.includes(clean)) {
+                    setForm(f => ({ ...f, tags: [...f.tags, clean] }));
+                  }
+                  setTagInput('');
+                }
+              }}
+              style={{ ...inputStyle, marginBottom: 6 }}
+              onFocus={e => e.target.style.borderColor = 'rgba(167,139,250,0.5)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+            />
+          )}
+          {/* Suggestions based on analysis category */}
+          {analysis?.category && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 4 }}>
+              <span style={{ fontSize: 11, color: '#475569', alignSelf: 'center' }}>Suggestions :</span>
+              {(TAG_SUGGESTIONS[analysis.category] || TAG_SUGGESTIONS.autre)
+                .filter(t => !form.tags.includes(t))
+                .slice(0, 5)
+                .map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => {
+                      if (form.tags.length < 3 && !form.tags.includes(tag)) {
+                        setForm(f => ({ ...f, tags: [...f.tags, tag] }));
+                      }
+                    }}
+                    disabled={form.tags.length >= 3}
+                    style={{
+                      padding: '2px 9px', borderRadius: 999, fontSize: 11, cursor: 'pointer',
+                      background: 'transparent', border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#94a3b8', transition: 'all .15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.4)'; e.currentTarget.style.color = '#a855f7'; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+            </div>
+          )}
         </div>
 
         {/* Stake notice */}

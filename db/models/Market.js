@@ -20,6 +20,7 @@ const MarketSchema = new mongoose.Schema({
   stakeReturned:  { type: Boolean, default: false },
   resolutionDate: { type: Date, required: true },
   minBet:         { type: Number, default: 1 },
+  tags:           { type: [String], default: [] },
   commentsCount:  { type: Number, default: 0 },
   trendingScore:  { type: Number, default: 0, index: true },
   flagged:        { type: Boolean, default: false },

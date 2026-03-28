@@ -146,6 +146,28 @@ export default function MarketCard({ market, onBetPlaced }) {
       {/* YES/NO bars */}
       <BetBar totalYes={market.totalYes} totalNo={market.totalNo} />
 
+      {/* Tags */}
+      {market.tags && market.tags.length > 0 && (
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {market.tags.map(tag => (
+            <a
+              key={tag}
+              href={`/tag/${tag}`}
+              onClick={e => { e.stopPropagation(); }}
+              style={{
+                padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
+                background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+                color: '#7c6aac', textDecoration: 'none', transition: 'all .15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#a855f7'; e.currentTarget.style.background = 'rgba(124,58,237,0.15)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#7c6aac'; e.currentTarget.style.background = 'rgba(124,58,237,0.08)'; }}
+            >
+              #{tag}
+            </a>
+          ))}
+        </div>
+      )}
+
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748b' }}>
         <div style={{ display: 'flex', gap: 14 }}>

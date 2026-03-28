@@ -11,6 +11,7 @@ import Account from './pages/Account';
 import Profile from './pages/Profile';
 import BetlyCopy from './pages/BetlyCopy';
 import MarketDetail from './pages/MarketDetail';
+import TagPage from './pages/TagPage';
 
 function getPage() {
   const path = window.location.pathname;
@@ -20,6 +21,7 @@ function getPage() {
   if (path === '/account') return 'account';
   if (path.startsWith('/profile/')) return 'profile';
   if (path.startsWith('/market/')) return 'market';
+  if (path.startsWith('/tag/')) return 'tag';
   return 'feed';
 }
 
@@ -52,6 +54,9 @@ function AppInner() {
           )}
           {page === 'profile'     && (
             <Profile profileId={window.location.pathname.split('/profile/')[1]} />
+          )}
+          {page === 'tag'         && (
+            <TagPage tag={window.location.pathname.split('/tag/')[1]} />
           )}
         </main>
 

@@ -240,7 +240,7 @@ router.get('/markets/personalized', async (req, res) => {
 // ─── GET /api/markets ────────────────────────────────────────────────────────
 router.get('/markets', async (req, res) => {
   try {
-    const { category, sort, status } = req.query;
+    const { category, sort, status, tag } = req.query;
     const count = await Market.countDocuments();
     if (count > 0) maybeTrending();
 
@@ -265,6 +265,7 @@ router.get('/markets', async (req, res) => {
 
     const filter = {};
     if (category && category !== 'tous') filter.category = category;
+    if (tag) filter.tags = tag.toLowerCase().replace(/^#+/, '');
     if (status) filter.status = status;
     else filter.status = 'active';
 
@@ -335,10 +336,19 @@ router.post('/markets', async (req, res) => {
       });
     }
 
+    // Clean and validate tags (max 3, lowercase, alphanum + underscore)
+    const rawTags = Array.isArray(req.body.tags) ? req.body.tags : [];
+    const cleanTags = [...new Set(
+      rawTags
+        .map(t => t.toString().toLowerCase().trim().replace(/^#+/, '').replace(/[^a-z0-9_]/g, ''))
+        .filter(t => t.length >= 2 && t.length <= 20)
+    )].slice(0, 3);
+
     const market = new Market({
       creatorId: userId,
       title,
       description: description || '',
+      tags: cleanTags,
       category: analysis.category || 'autre',
       oracleLevel: analysis.oracleLevel || 2,
       confidenceScore: analysis.confidenceScore || 0,
@@ -602,6 +612,28 @@ router.get('/markets/:id/votes', async (req, res) => {
     res.json({ yesCount, noCount, total: votes.length, userVote });
   } catch (err) {
     logger.error(`GET /markets/:id/votes error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/tags/trending ──────────────────────────────────────────────────
+router.get('/tags/trending', async (req, res) => {
+  try {
+    const dbCount = await Market.countDocuments();
+    if (dbCount === 0) {
+      return res.json({ tags: ['bitcoin', 'crypto', 'sport', 'france', 'ia', 'netflix', 'elections', 'ethereum'] });
+    }
+    const agg = await Market.aggregate([
+      { $match: { status: 'active', tags: { $exists: true, $ne: [] } } },
+      { $unwind: '$tags' },
+      { $group: { _id: '$tags', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 12 },
+    ]);
+    const tags = agg.map(t => t._id);
+    res.json({ tags });
+  } catch (err) {
+    logger.error(`GET /tags/trending error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });
