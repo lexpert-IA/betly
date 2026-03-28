@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
 import NotificationBell from './NotificationBell';
+import SearchModal from './SearchModal';
 import { toast } from './ToastManager';
 
 const LINKS = [
@@ -16,6 +17,19 @@ export default function Topbar() {
   const menuRef = useRef(null);
   const currentPath = window.location.pathname;
   const isMobile = useIsMobile();
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Ctrl+K shortcut
+  useEffect(() => {
+    function onKey(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(v => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   // Close menu on outside click
   useEffect(() => {
@@ -77,6 +91,32 @@ export default function Topbar() {
         </nav>
       )}
       {isMobile && <div style={{ flex: 1 }} />}
+
+      {/* Search button */}
+      <button
+        onClick={() => setSearchOpen(true)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '5px 12px', borderRadius: 8,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          color: '#64748b', cursor: 'pointer', fontSize: 12,
+          transition: 'all .2s', flexShrink: 0,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; e.currentTarget.style.color = '#a855f7'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#64748b'; }}
+      >
+        <span>🔍</span>
+        {!isMobile && (
+          <>
+            <span>Rechercher</span>
+            <kbd style={{ padding: '1px 5px', borderRadius: 3, fontSize: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', marginLeft: 2 }}>⌘K</kbd>
+          </>
+        )}
+      </button>
+
+      {/* Search modal */}
+      {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} />}
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>

@@ -675,6 +675,48 @@ router.get('/markets/:id/votes', async (req, res) => {
   }
 });
 
+// ─── GET /api/search ─────────────────────────────────────────────────────────
+router.get('/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q || q.trim().length < 2) return res.json({ markets: [], users: [], tags: [] });
+
+    const query = q.trim();
+    const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+
+    const [markets, users, tagResults] = await Promise.all([
+      Market.find({ title: regex, status: 'active' })
+        .select('title category totalYes totalNo trendingScore resolutionDate tags')
+        .sort({ trendingScore: -1 })
+        .limit(8)
+        .lean(),
+
+      User.find({ $or: [{ username: regex }, { displayName: regex }] })
+        .select('username displayName level currentStreak')
+        .limit(5)
+        .lean(),
+
+      Market.aggregate([
+        { $match: { 'tags': { $regex: query, $options: 'i' }, status: 'active' } },
+        { $unwind: '$tags' },
+        { $match: { 'tags': { $regex: query, $options: 'i' } } },
+        { $group: { _id: '$tags', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]),
+    ]);
+
+    res.json({
+      markets,
+      users,
+      tags: tagResults.map(t => ({ tag: t._id, count: t.count })),
+    });
+  } catch (err) {
+    logger.error(`GET /search error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/tags/trending ──────────────────────────────────────────────────
 router.get('/tags/trending', async (req, res) => {
   try {
