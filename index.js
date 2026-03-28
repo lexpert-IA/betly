@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const mongoose = require('mongoose');
 const config = require('./config');
 const logger = require('./src/utils/logger');
@@ -10,8 +11,8 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// ── MongoDB lazy connection (cached across warm lambda invocations) ────────────
-let dbState = 'disconnected'; // 'disconnected' | 'connecting' | 'connected' | 'failed'
+// ── MongoDB lazy connection (cached across warm lambda invocations) ─────────
+let dbState = 'disconnected';
 
 async function ensureMongo() {
   if (dbState === 'connected') return true;
@@ -37,15 +38,22 @@ async function ensureMongo() {
   }
 }
 
-// Connect before handling API requests
+// ── API routes ───────────────────────────────────────────────────────────────
 app.use('/api', async (req, res, next) => {
   await ensureMongo();
   next();
 });
-
 app.use('/api', apiRouter);
 
-// ── Export for Vercel (serverless) ────────────────────────────────────────────
+// ── Serve React frontend (built by Vite into web/dist/) ──────────────────────
+const DIST = path.join(__dirname, 'web', 'dist');
+app.use(express.static(DIST));
+// SPA fallback — all non-API routes → index.html
+app.get('*', (req, res) => {
+  res.sendFile(path.join(DIST, 'index.html'));
+});
+
+// ── Export for Vercel serverless ─────────────────────────────────────────────
 module.exports = app;
 
 // ── Local dev server ──────────────────────────────────────────────────────────
@@ -54,7 +62,6 @@ if (require.main === module) {
     app.listen(config.port, () => {
       logger.info(`API BETLY démarrée sur le port ${config.port}`);
     });
-    // Resolver only in long-running process (not serverless)
     const { startResolver } = require('./src/agents/resolver');
     startResolver();
   });
