@@ -21,6 +21,64 @@ async function maybeTrending() {
   }
 }
 
+// ─── Level + Streak helpers ──────────────────────────────────────────────────
+function computeLevel(totalBets, wonBets, isTopLeaderboard = false) {
+  if (isTopLeaderboard) return 'legende';
+  const winrate = totalBets > 0 ? wonBets / totalBets : 0;
+  if (totalBets >= 201 && winrate > 0.65) return 'oracle';
+  if (totalBets >= 51) return 'expert';
+  if (totalBets >= 11) return 'actif';
+  return 'debutant';
+}
+
+async function updateStreak(userId) {
+  try {
+    const user = await User.findById(userId);
+    if (!user) return;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const lastStr = user.lastLoginDate ? new Date(user.lastLoginDate).toISOString().split('T')[0] : null;
+
+    if (lastStr === todayStr) return; // already checked in today
+
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    let streak = lastStr === yesterdayStr ? (user.currentStreak || 0) + 1 : 1;
+    const longest = Math.max(streak, user.longestStreak || 0);
+
+    // Badge rewards
+    const badges = new Set(user.badges || []);
+    if (streak >= 7)   badges.add('regulier');
+    if (streak >= 30)  badges.add('acharne');
+    if (streak >= 100) badges.add('legendaire');
+
+    await User.findByIdAndUpdate(userId, {
+      currentStreak: streak,
+      longestStreak: longest,
+      lastLoginDate: now,
+      badges: [...badges],
+    });
+  } catch (e) {
+    logger.error(`updateStreak error: ${e.message}`);
+  }
+}
+
+async function updateLevel(userId) {
+  try {
+    const user = await User.findById(userId).lean();
+    if (!user) return;
+    const level = computeLevel(user.totalBets || 0, user.wonBets || 0);
+    if (level !== user.level) {
+      await User.findByIdAndUpdate(userId, { level });
+    }
+  } catch (e) {
+    logger.error(`updateLevel error: ${e.message}`);
+  }
+}
+
 // ─── Notification helper ─────────────────────────────────────────────────────
 async function notify({ userId, type, message, marketId = null, fromUser = null, amount = null }) {
   try {
@@ -435,12 +493,13 @@ router.post('/markets/:id/bet', async (req, res) => {
     else market.totalNo += amount;
     await market.save();
 
-    // Upsert user stats
-    await User.findOneAndUpdate(
+    // Upsert user stats + update level
+    const updatedUser = await User.findOneAndUpdate(
       { telegramId: userId },
       { $inc: { totalBets: 1 }, $setOnInsert: { createdAt: new Date() } },
       { upsert: true, new: true }
     );
+    if (updatedUser) updateLevel(updatedUser._id.toString()).catch(() => {});
 
     logger.info(`Bet placed: ${userId} ${side} ${amount} USDC on market ${id}`);
     res.status(201).json({ bet, market });
@@ -684,13 +743,14 @@ router.get('/account', async (req, res) => {
       user = {
         _id: userId,
         displayName: `User ${userId.slice(0, 6)}`,
-        balance: 0,
-        totalBets: 0,
-        wonBets: 0,
-        totalEarned: 0,
-        reputation: 50,
+        balance: 0, totalBets: 0, wonBets: 0,
+        totalEarned: 0, reputation: 50, level: 'debutant',
+        currentStreak: 0, longestStreak: 0, badges: [],
         createdAt: new Date(),
       };
+    } else {
+      // Update streak on each visit (fire and forget)
+      updateStreak(user._id.toString()).catch(() => {});
     }
 
     const recentBets = await Bet.find({ userId })
@@ -824,6 +884,9 @@ router.post('/auth/register', async (req, res) => {
       displayName: username.trim(),
       balance: 100, // starter balance
       reputation: 50,
+      level: 'debutant',
+      currentStreak: 1,
+      lastLoginDate: new Date(),
     });
 
     logger.info(`Auth register: ${clean} (${user._id})`);
