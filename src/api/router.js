@@ -737,7 +737,13 @@ router.get('/account', async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(401).json({ error: 'userId required' });
 
-    let user = await User.findOne({ $or: [{ _id: userId }, { telegramId: userId }] }).lean();
+    const mongoose = require('mongoose');
+    const isValidId = mongoose.Types.ObjectId.isValid(userId);
+    const userQuery = isValidId
+      ? { $or: [{ _id: userId }, { telegramId: userId }, { username: userId }] }
+      : { $or: [{ telegramId: userId }, { username: userId }] };
+
+    let user = await User.findOne(userQuery).lean();
 
     if (!user) {
       user = {
