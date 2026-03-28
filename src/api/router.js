@@ -811,4 +811,97 @@ router.get('/markets/:id/activity', async (req, res) => {
   }
 });
 
+// ─── GET /api/feed/live ───────────────────────────────────────────────────────
+router.get('/feed/live', async (req, res) => {
+  try {
+    const dbCount = await Market.countDocuments();
+
+    if (dbCount === 0) {
+      // Mock live feed when DB is empty
+      const mocks = getMockMarkets();
+      const mockEvents = [
+        { type: 'bet', userId: 'neo****', side: 'YES', amount: 50, marketTitle: mocks[0].title, marketId: mocks[0]._id, time: new Date(Date.now() - 12000) },
+        { type: 'market_created', marketTitle: mocks[4].title, marketId: mocks[4]._id, time: new Date(Date.now() - 45000) },
+        { type: 'bet', userId: 'luna****', side: 'NO', amount: 25, marketTitle: mocks[1].title, marketId: mocks[1]._id, time: new Date(Date.now() - 78000) },
+        { type: 'bet', userId: 'zara****', side: 'YES', amount: 10, marketTitle: mocks[2].title, marketId: mocks[2]._id, time: new Date(Date.now() - 120000) },
+        { type: 'bet', userId: 'kain****', side: 'YES', amount: 100, marketTitle: mocks[0].title, marketId: mocks[0]._id, time: new Date(Date.now() - 200000) },
+        { type: 'market_created', marketTitle: mocks[5].title, marketId: mocks[5]._id, time: new Date(Date.now() - 300000) },
+        { type: 'bet', userId: 'ryu0****', side: 'NO', amount: 15, marketTitle: mocks[3].title, marketId: mocks[3]._id, time: new Date(Date.now() - 420000) },
+        { type: 'market_resolved', marketTitle: 'Trump remporte les élections 2024 ?', marketId: 'mock-old', outcome: 'YES', time: new Date(Date.now() - 600000) },
+        { type: 'bet', userId: 'ada0****', side: 'YES', amount: 5, marketTitle: mocks[4].title, marketId: mocks[4]._id, time: new Date(Date.now() - 720000) },
+        { type: 'bet', userId: 'ven0****', side: 'NO', amount: 30, marketTitle: mocks[2].title, marketId: mocks[2]._id, time: new Date(Date.now() - 900000) },
+      ];
+      return res.json({ events: mockEvents });
+    }
+
+    const LIMIT = 20;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000); // last 24h
+
+    // Fetch recent bets with market titles
+    const recentBets = await Bet.find({ placedAt: { $gte: since } })
+      .sort({ placedAt: -1 })
+      .limit(LIMIT)
+      .lean();
+
+    // Get unique marketIds from bets
+    const marketIds = [...new Set(recentBets.map(b => b.marketId?.toString()))];
+    const markets = await Market.find({ _id: { $in: marketIds } })
+      .select('title')
+      .lean();
+    const marketMap = {};
+    markets.forEach(m => { marketMap[m._id.toString()] = m.title; });
+
+    const betEvents = recentBets.map(b => ({
+      type: 'bet',
+      userId: b.userId.slice(0, 4) + '****',
+      side: b.side,
+      amount: b.amount,
+      marketTitle: marketMap[b.marketId?.toString()] || 'Marché inconnu',
+      marketId: b.marketId?.toString(),
+      time: b.placedAt,
+    }));
+
+    // Recent market creations
+    const newMarkets = await Market.find({ createdAt: { $gte: since } })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .select('title createdAt _id')
+      .lean();
+
+    const createdEvents = newMarkets.map(m => ({
+      type: 'market_created',
+      marketTitle: m.title,
+      marketId: m._id.toString(),
+      time: m.createdAt,
+    }));
+
+    // Recent resolutions
+    const resolved = await Market.find({
+      status: 'resolved',
+      outcome: { $in: ['YES', 'NO'] },
+    })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .select('title outcome _id updatedAt')
+      .lean();
+
+    const resolvedEvents = resolved.map(m => ({
+      type: 'market_resolved',
+      marketTitle: m.title,
+      marketId: m._id.toString(),
+      outcome: m.outcome,
+      time: m.updatedAt || m.createdAt,
+    }));
+
+    const all = [...betEvents, ...createdEvents, ...resolvedEvents]
+      .sort((a, b) => new Date(b.time) - new Date(a.time))
+      .slice(0, LIMIT);
+
+    res.json({ events: all });
+  } catch (err) {
+    logger.error(`GET /feed/live error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

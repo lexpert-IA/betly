@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Topbar from './components/Topbar';
 import AuthModal from './components/AuthModal';
 import ToastManager from './components/ToastManager';
+import LiveFeed from './components/LiveFeed';
 import Feed from './pages/Feed';
 import CreateMarket from './pages/CreateMarket';
 import Leaderboard from './pages/Leaderboard';
@@ -28,26 +29,48 @@ function AppInner() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f' }}>
-      {/* Auth modal — shown until user registers */}
       {!user && <AuthModal />}
-
       <Topbar />
 
-      <main style={{ paddingBottom: 48 }}>
-        {page === 'feed'      && <Feed />}
-        {page === 'create'    && <CreateMarket />}
-        {page === 'copy'      && <BetlyCopy />}
-        {page === 'leaderboard' && <Leaderboard />}
-        {page === 'account'   && <Account />}
-        {page === 'market'    && (
-          <MarketDetail marketId={window.location.pathname.split('/market/')[1]} />
-        )}
-        {page === 'profile'   && (
-          <Profile profileId={window.location.pathname.split('/profile/')[1]} />
-        )}
-      </main>
+      <div style={{
+        display: 'flex',
+        gap: 0,
+        maxWidth: 1400,
+        margin: '0 auto',
+        padding: '0 16px',
+        alignItems: 'flex-start',
+      }}>
+        {/* Main content */}
+        <main style={{ flex: 1, minWidth: 0, paddingBottom: 48 }}>
+          {page === 'feed'        && <Feed />}
+          {page === 'create'      && <CreateMarket />}
+          {page === 'copy'        && <BetlyCopy />}
+          {page === 'leaderboard' && <Leaderboard />}
+          {page === 'account'     && <Account />}
+          {page === 'market'      && (
+            <MarketDetail marketId={window.location.pathname.split('/market/')[1]} />
+          )}
+          {page === 'profile'     && (
+            <Profile profileId={window.location.pathname.split('/profile/')[1]} />
+          )}
+        </main>
 
-      {/* Global toast manager */}
+        {/* Live feed sidebar — hidden on small screens */}
+        <div style={{
+          display: 'none',
+          paddingTop: 24,
+          paddingLeft: 20,
+        }} className="livefeed-wrapper">
+          <LiveFeed />
+        </div>
+      </div>
+
+      <style>{`
+        @media (min-width: 1100px) {
+          .livefeed-wrapper { display: block !important; }
+        }
+      `}</style>
+
       <ToastManager />
     </div>
   );
