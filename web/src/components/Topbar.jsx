@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useIsMobile } from '../hooks/useIsMobile';
 import NotificationBell from './NotificationBell';
 import { toast } from './ToastManager';
 
@@ -14,6 +15,7 @@ export default function Topbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const currentPath = window.location.pathname;
+  const isMobile = useIsMobile();
 
   // Close menu on outside click
   useEffect(() => {
@@ -55,38 +57,43 @@ export default function Topbar() {
         BETLY
       </a>
 
-      {/* Nav */}
-      <nav style={{ display: 'flex', gap: 2, flex: 1 }}>
-        {LINKS.map(({ label, path }) => {
-          const isActive = path === '/' ? currentPath === '/' : currentPath.startsWith(path);
-          return (
-            <a key={path} href={path} style={{
-              textDecoration: 'none', padding: '6px 11px', borderRadius: 6,
-              fontSize: 13, fontWeight: isActive ? 600 : 400,
-              color: isActive ? '#a78bfa' : '#9090a0',
-              background: isActive ? 'rgba(167,139,250,0.1)' : 'transparent',
-              transition: 'all .15s', whiteSpace: 'nowrap',
-            }}>
-              {label}
-            </a>
-          );
-        })}
-      </nav>
+      {/* Nav — hidden on mobile (uses BottomNav instead) */}
+      {!isMobile && (
+        <nav style={{ display: 'flex', gap: 2, flex: 1 }}>
+          {LINKS.map(({ label, path }) => {
+            const isActive = path === '/' ? currentPath === '/' : currentPath.startsWith(path);
+            return (
+              <a key={path} href={path} style={{
+                textDecoration: 'none', padding: '6px 11px', borderRadius: 6,
+                fontSize: 13, fontWeight: isActive ? 600 : 400,
+                color: isActive ? '#a78bfa' : '#9090a0',
+                background: isActive ? 'rgba(167,139,250,0.1)' : 'transparent',
+                transition: 'all .15s', whiteSpace: 'nowrap',
+              }}>
+                {label}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+      {isMobile && <div style={{ flex: 1 }} />}
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         {user ? (
           <>
-            {/* Balance pill */}
-            <div style={{
-              padding: '4px 10px', borderRadius: 7,
-              background: 'rgba(124,58,237,0.1)',
-              border: '1px solid rgba(124,58,237,0.2)',
-              fontSize: 12, color: '#a78bfa', fontWeight: 600,
-              whiteSpace: 'nowrap',
-            }}>
-              {typeof user.balance === 'number' ? `${user.balance.toFixed(2)} USDC` : '—'}
-            </div>
+            {/* Balance pill — desktop only */}
+            {!isMobile && (
+              <div style={{
+                padding: '4px 10px', borderRadius: 7,
+                background: 'rgba(124,58,237,0.1)',
+                border: '1px solid rgba(124,58,237,0.2)',
+                fontSize: 12, color: '#a78bfa', fontWeight: 600,
+                whiteSpace: 'nowrap',
+              }}>
+                {typeof user.balance === 'number' ? `${user.balance.toFixed(2)} USDC` : '—'}
+              </div>
+            )}
 
             {/* Notification bell */}
             <NotificationBell onNewNotif={handleNewNotif} />

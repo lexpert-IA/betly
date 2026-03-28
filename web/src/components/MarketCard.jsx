@@ -224,17 +224,49 @@ export default function MarketCard({ market, onBetPlaced }) {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              {/* Tactile slider + number input */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>Montant</span>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input
+                      type="number" min="1" step="1"
+                      value={betAmount} onChange={e => setBetAmount(e.target.value)}
+                      style={{
+                        width: 72, padding: '5px 8px', borderRadius: 6,
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: '#0a0a0f', color: '#f8fafc', fontSize: 13, outline: 'none',
+                        textAlign: 'center',
+                      }}
+                    />
+                    <span style={{ fontSize: 11, color: '#64748b' }}>USDC</span>
+                  </div>
+                </div>
                 <input
-                  type="number" min="1" step="0.5" placeholder="Montant USDC"
-                  value={betAmount} onChange={e => setBetAmount(e.target.value)}
-                  style={{
-                    flex: 1, padding: '8px 12px', borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    background: '#0a0a0f', color: '#f8fafc', fontSize: 13, outline: 'none',
-                  }}
+                  type="range" min="1" max="100" step="1"
+                  value={betAmount || 1}
+                  onChange={e => setBetAmount(e.target.value)}
+                  style={{ width: '100%', accentColor: betSide === 'YES' ? '#a855f7' : '#94a3b8', cursor: 'pointer' }}
                 />
-                <span style={{ fontSize: 11, color: '#64748b' }}>USDC</span>
+                {/* Quick amounts */}
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {[5, 10, 25, 50].map(amt => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setBetAmount(String(amt))}
+                      style={{
+                        flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 11, cursor: 'pointer',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: String(betAmount) === String(amt) ? 'rgba(168,85,247,0.2)' : 'transparent',
+                        color: String(betAmount) === String(amt) ? '#a855f7' : '#64748b',
+                        transition: 'all .1s',
+                      }}
+                    >
+                      ${amt}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button

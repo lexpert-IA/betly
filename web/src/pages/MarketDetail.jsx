@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
+import { useIsMobile } from '../hooks/useIsMobile';
 import ConfidenceBadge from '../components/ConfidenceBadge';
 import AiAnalysis from '../components/AiAnalysis';
 import { toast } from '../components/ToastManager';
@@ -620,6 +621,7 @@ function ActivityFeed({ marketId }) {
 // ── Main MarketDetail ─────────────────────────────────────────────────────────
 export default function MarketDetail({ marketId }) {
   const userId = useUserId();
+  const isMobile = useIsMobile();
   const [betKey, setBetKey] = useState(0);
   const { data, loading, error, refetch } = useApi(`/api/markets/${marketId}`, { interval: 0 });
 
@@ -697,7 +699,7 @@ export default function MarketDetail({ marketId }) {
       </div>
 
       {/* Main layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 24, alignItems: 'start' }}>
 
         {/* ── LEFT COLUMN ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

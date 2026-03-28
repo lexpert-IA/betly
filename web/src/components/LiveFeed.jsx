@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -77,11 +78,111 @@ function EventRow({ event, onClick, isNew }) {
   );
 }
 
+// ── Mobile bottom sheet wrapper ───────────────────────────────────────────────
+export function LiveFeedSheet({ open, onClose }) {
+  const [events, setEvents] = useState([]);
+  const sheetRef = useRef(null);
+  const startYRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const load = async () => {
+      try {
+        const r = await fetch(`${API}/api/feed/live`);
+        if (r.ok) { const d = await r.json(); setEvents(d.events || []); }
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 3000);
+    return () => clearInterval(id);
+  }, [open]);
+
+  // Block body scroll when open
+  useEffect(() => {
+    document.body.style.overflow = open ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [open]);
+
+  function navigate(marketId) {
+    if (!marketId || marketId === 'mock-old') return;
+    onClose();
+    window.location.href = `/market/${marketId}`;
+  }
+
+  // Touch swipe-down to close
+  function onTouchStart(e) { startYRef.current = e.touches[0].clientY; }
+  function onTouchEnd(e) {
+    if (startYRef.current === null) return;
+    const delta = e.changedTouches[0].clientY - startYRef.current;
+    if (delta > 60) onClose();
+    startYRef.current = null;
+  }
+
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          zIndex: 300, animation: 'fadeIn .2s ease',
+        }}
+      />
+      {/* Sheet */}
+      <div
+        ref={sheetRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'fixed', bottom: 60, left: 0, right: 0,
+          height: '70vh', zIndex: 301,
+          background: '#0f0f1a', borderRadius: '20px 20px 0 0',
+          border: '1px solid rgba(255,255,255,0.1)', borderBottom: 'none',
+          display: 'flex', flexDirection: 'column',
+          animation: 'slideUp .3s cubic-bezier(.34,1.56,.64,1)',
+        }}
+      >
+        <style>{`
+          @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+          @keyframes slideUp { from { transform:translateY(100%) } to { transform:translateY(0) } }
+        `}</style>
+        {/* Drag handle */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0 8px' }}>
+          <div style={{ width: 40, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)' }} />
+        </div>
+        {/* Header */}
+        <div style={{ padding: '0 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 8, color: '#22c55e' }}>●</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>LIVE</span>
+            <span style={{ fontSize: 12, color: '#64748b' }}>Ce qui se passe</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>×</button>
+        </div>
+        {/* Events */}
+        <div style={{ overflowY: 'auto', flex: 1, paddingBottom: 16 }}>
+          {events.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 32, color: '#475569', fontSize: 13 }}>Aucune activité</div>
+          ) : (
+            events.map((e, i) => (
+              <EventRow key={i} event={e} onClick={() => navigate(e.marketId)} isNew={false} />
+            ))
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function LiveFeed() {
   const [events, setEvents] = useState([]);
   const [newIds, setNewIds] = useState(new Set());
   const prevIdsRef = useRef(new Set());
   const [visible, setVisible] = useState(true);
+  const isMobile = useIsMobile();
+  if (isMobile) return null; // Mobile uses LiveFeedSheet instead
 
   async function fetchEvents() {
     try {

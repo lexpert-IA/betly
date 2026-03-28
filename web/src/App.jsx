@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './hooks/useAuth';
+import { useIsMobile } from './hooks/useIsMobile';
 import Topbar from './components/Topbar';
 import AuthModal from './components/AuthModal';
 import ToastManager from './components/ToastManager';
-import LiveFeed from './components/LiveFeed';
+import LiveFeed, { LiveFeedSheet } from './components/LiveFeed';
+import BottomNav from './components/BottomNav';
 import Feed from './pages/Feed';
 import CreateMarket from './pages/CreateMarket';
 import Leaderboard from './pages/Leaderboard';
@@ -28,10 +30,14 @@ function getPage() {
 function AppInner() {
   const { user } = useAuth();
   const page = getPage();
+  const isMobile = useIsMobile();
+  const [liveSheetOpen, setLiveSheetOpen] = useState(false);
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f' }}>
       {!user && <AuthModal />}
+
+      {/* Topbar — always shown, but simplified on mobile */}
       <Topbar />
 
       <div style={{
@@ -43,7 +49,11 @@ function AppInner() {
         alignItems: 'flex-start',
       }}>
         {/* Main content */}
-        <main style={{ flex: 1, minWidth: 0, paddingBottom: 48 }}>
+        <main style={{
+          flex: 1,
+          minWidth: 0,
+          paddingBottom: isMobile ? 76 : 48, // extra space for bottom nav
+        }}>
           {page === 'feed'        && <Feed />}
           {page === 'create'      && <CreateMarket />}
           {page === 'copy'        && <BetlyCopy />}
@@ -60,15 +70,17 @@ function AppInner() {
           )}
         </main>
 
-        {/* Live feed sidebar — hidden on small screens */}
-        <div style={{
-          display: 'none',
-          paddingTop: 24,
-          paddingLeft: 20,
-        }} className="livefeed-wrapper">
+        {/* Live feed sidebar — desktop only (≥1100px) */}
+        <div style={{ display: 'none', paddingTop: 24, paddingLeft: 20 }} className="livefeed-wrapper">
           <LiveFeed />
         </div>
       </div>
+
+      {/* Mobile bottom nav */}
+      {isMobile && <BottomNav onLiveOpen={() => setLiveSheetOpen(true)} />}
+
+      {/* Mobile live feed sheet */}
+      <LiveFeedSheet open={liveSheetOpen} onClose={() => setLiveSheetOpen(false)} />
 
       <style>{`
         @media (min-width: 1100px) {
