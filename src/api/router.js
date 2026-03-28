@@ -8,7 +8,18 @@ const Vote = require('../../db/models/Vote');
 const Notification = require('../../db/models/Notification');
 const { analyzeMarket } = require('../agents/moderator');
 const { checkForFraud } = require('../agents/watcher');
+const { computeTrendingScores } = require('../agents/trending');
 const logger = require('../utils/logger');
+
+// Serverless-safe: recalculate trending if last run was >15min ago
+let lastTrendingRun = 0;
+async function maybeTrending() {
+  const now = Date.now();
+  if (now - lastTrendingRun > 15 * 60 * 1000) {
+    lastTrendingRun = now;
+    computeTrendingScores().catch(() => {});
+  }
+}
 
 // ─── Notification helper ─────────────────────────────────────────────────────
 async function notify({ userId, type, message, marketId = null, fromUser = null, amount = null }) {
@@ -154,6 +165,7 @@ router.get('/markets', async (req, res) => {
   try {
     const { category, sort, status } = req.query;
     const count = await Market.countDocuments();
+    if (count > 0) maybeTrending();
 
     if (count === 0) {
       let markets = getMockMarkets();
@@ -182,7 +194,7 @@ router.get('/markets', async (req, res) => {
     let query = Market.find(filter);
     if (sort === 'nouveau') query = query.sort({ createdAt: -1 });
     else if (sort === 'ferme') query = query.sort({ resolutionDate: 1 });
-    else query = query.sort({ totalYes: -1 });
+    else query = query.sort({ trendingScore: -1, totalYes: -1 }); // trending: algorithmic score first
 
     const markets = await query.limit(50).lean();
     res.json({ markets, source: 'db' });

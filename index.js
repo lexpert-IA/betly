@@ -63,6 +63,8 @@ if (require.main === module) {
       logger.info(`API BETLY démarrée sur le port ${config.port}`);
     });
     const { startResolver } = require('./src/agents/resolver');
+    const { startTrending } = require('./src/agents/trending');
     startResolver();
+    startTrending();
   });
 }

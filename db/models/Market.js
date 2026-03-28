@@ -21,6 +21,7 @@ const MarketSchema = new mongoose.Schema({
   resolutionDate: { type: Date, required: true },
   minBet:         { type: Number, default: 1 },
   commentsCount:  { type: Number, default: 0 },
+  trendingScore:  { type: Number, default: 0, index: true },
   flagged:        { type: Boolean, default: false },
   rejectionReason:String,
   createdAt:      { type: Date, default: Date.now },
