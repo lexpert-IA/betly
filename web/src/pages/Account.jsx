@@ -2,6 +2,7 @@ import React from 'react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { computeAvatarColor } from '../hooks/useAuth';
+import CopyTradeButton from '../components/CopyTradeButton';
 
 // ── Level config ──────────────────────────────────────────────────────────────
 const LEVELS = {
@@ -282,7 +283,7 @@ export default function Account() {
                         {new Date(bet.placedAt).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ color: '#e2e2e8', fontWeight: 600 }}>{bet.amount} USDC</span>
                       <span style={{
                         padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
@@ -291,6 +292,9 @@ export default function Account() {
                       }}>
                         {bet.status === 'won' ? '✓ Gagné' : bet.status === 'lost' ? '✗ Perdu' : '⏳ En cours'}
                       </span>
+                      {bet.marketId && bet.status === 'active' && (
+                        <CopyTradeButton marketId={bet.marketId} side={bet.side} />
+                      )}
                     </div>
                   </div>
                 ))}

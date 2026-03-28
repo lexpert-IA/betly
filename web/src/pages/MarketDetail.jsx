@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ConfidenceBadge from '../components/ConfidenceBadge';
 import AiAnalysis from '../components/AiAnalysis';
+import CopyTradeButton from '../components/CopyTradeButton';
 import { toast } from '../components/ToastManager';
 
 // ── Share Button ──────────────────────────────────────────────────────────────
@@ -591,12 +592,15 @@ function ActivityFeed({ marketId }) {
             <div style={{ flex: 1, minWidth: 0 }}>
               {item.type === 'bet' ? (
                 <div style={{ fontSize: 12, color: '#94a3b8' }}>
-                  <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{item.userId}</span>
-                  {' '}a parié{' '}
-                  <span style={{ color: item.side === 'YES' ? '#a855f7' : '#94a3b8', fontWeight: 600 }}>
-                    {item.side === 'YES' ? 'OUI' : 'NON'}
-                  </span>
-                  {' · '}<span style={{ color: '#a855f7' }}>{item.amount} USDC</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, color: '#e2e8f0' }}>{item.userId}</span>
+                    {' '}a parié{' '}
+                    <span style={{ color: item.side === 'YES' ? '#a855f7' : '#94a3b8', fontWeight: 600 }}>
+                      {item.side === 'YES' ? 'OUI' : 'NON'}
+                    </span>
+                    {' · '}<span style={{ color: '#a855f7' }}>{item.amount} USDC</span>
+                    <CopyTradeButton marketId={marketId} side={item.side} marketTitle={data?.title || data?.market?.title} />
+                  </div>
                 </div>
               ) : (
                 <div style={{ fontSize: 12, color: '#94a3b8' }}>
