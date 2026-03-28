@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useApi } from '../hooks/useApi';
+import { useApi, useUserId } from '../hooks/useApi';
 import MarketCard from '../components/MarketCard';
 
 const CATEGORIES = ['tous', 'sport', 'crypto', 'politique', 'culture', 'autre'];
@@ -199,14 +199,29 @@ function SkeletonCard() {
   );
 }
 
+// ── Feed personnalisé hook ─────────────────────────────────────────────────────
+function usePersonalizedFeed(userId) {
+  const { data, loading, error } = useApi(
+    userId ? '/api/markets/personalized' : null,
+    { params: userId ? { userId } : {} }
+  );
+  return { markets: data?.markets || [], reason: data?.reason, loading, error };
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function Feed() {
+  const [feedTab, setFeedTab]   = useState('global');  // 'global' | 'pour-toi'
   const [category, setCategory] = useState('tous');
   const [sort, setSort]         = useState('trending');
   const [refreshKey, setRefreshKey] = useState(0);
+  const userId = useUserId();
 
-  const { data, loading, error } = useApi('/api/markets', { params: { category, sort } });
-  const markets = data?.markets || [];
+  const globalFeed = useApi('/api/markets', { params: { category, sort } });
+  const persoFeed  = usePersonalizedFeed(userId);
+
+  const { data, loading, error } = feedTab === 'pour-toi' ? persoFeed : globalFeed;
+  const markets = (feedTab === 'pour-toi' ? persoFeed.markets : data?.markets) || [];
+  const persoReason = persoFeed.reason;
 
   const handleBetPlaced = useCallback(() => setRefreshKey(k => k + 1), []);
 
@@ -222,54 +237,92 @@ export default function Feed() {
         borderRadius: 999, opacity: .4,
       }} />
 
-      {/* Section title */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
-          🔥 Paris Tendance
-          <span style={{ fontSize: 13, color: '#64748b', fontWeight: 400 }}>· En direct</span>
-        </div>
-        <a href="/create" style={{ color: '#a855f7', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-          Créer →
-        </a>
+      {/* ── Feed tabs ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 20 }}>
+        {[
+          { key: 'global',   label: '🌐 Global' },
+          { key: 'pour-toi', label: '✨ Pour toi' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setFeedTab(key)}
+            style={{
+              padding: '7px 18px', borderRadius: 10, cursor: 'pointer', transition: 'all .2s',
+              border: feedTab === key ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
+              background: feedTab === key ? 'rgba(168,85,247,0.15)' : 'transparent',
+              color: feedTab === key ? '#a855f7' : '#64748b',
+              fontSize: 13, fontWeight: feedTab === key ? 700 : 500,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+        <span style={{ marginLeft: 'auto' }}>
+          <a href="/create" style={{ color: '#a855f7', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+            Créer →
+          </a>
+        </span>
       </div>
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              style={{
-                padding: '5px 14px', borderRadius: 999, cursor: 'pointer', transition: 'all .2s',
-                border: category === cat ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
-                background: category === cat ? 'rgba(168,85,247,0.15)' : 'transparent',
-                color: category === cat ? '#a855f7' : '#94a3b8',
-                fontSize: 12, fontWeight: 500,
-              }}
-            >
-              {cat === 'tous' ? 'Tous' : cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </button>
-          ))}
+      {/* "Pour toi" context hint */}
+      {feedTab === 'pour-toi' && persoReason === 'trending_fallback' && !persoFeed.loading && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+          background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+          color: '#a78bfa', fontSize: 12,
+        }}>
+          💡 Paris et suis des créateurs pour personnaliser ce feed — affichage trending pour l'instant
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {SORTS.map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setSort(key)}
-              style={{
-                padding: '5px 11px', borderRadius: 7, cursor: 'pointer', transition: 'all .15s',
-                border: '1px solid rgba(255,255,255,0.07)',
-                background: sort === key ? 'rgba(255,255,255,0.07)' : 'transparent',
-                color: sort === key ? '#f8fafc' : '#64748b',
-                fontSize: 12,
-              }}
-            >
-              {label}
-            </button>
-          ))}
+      )}
+      {feedTab === 'pour-toi' && persoReason === 'padded_with_trending' && !persoFeed.loading && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 8, marginBottom: 16,
+          background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+          color: '#a78bfa', fontSize: 12,
+        }}>
+          ✨ Marchés de tes créateurs suivis + les plus tendances
         </div>
-      </div>
+      )}
+
+      {/* Global feed filters — hidden on "Pour toi" */}
+      {feedTab === 'global' && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                style={{
+                  padding: '5px 14px', borderRadius: 999, cursor: 'pointer', transition: 'all .2s',
+                  border: category === cat ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
+                  background: category === cat ? 'rgba(168,85,247,0.15)' : 'transparent',
+                  color: category === cat ? '#a855f7' : '#94a3b8',
+                  fontSize: 12, fontWeight: 500,
+                }}
+              >
+                {cat === 'tous' ? 'Tous' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 4 }}>
+            {SORTS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSort(key)}
+                style={{
+                  padding: '5px 11px', borderRadius: 7, cursor: 'pointer', transition: 'all .15s',
+                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: sort === key ? 'rgba(255,255,255,0.07)' : 'transparent',
+                  color: sort === key ? '#f8fafc' : '#64748b',
+                  fontSize: 12,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{

@@ -160,6 +160,83 @@ function getMockMarkets() {
   ];
 }
 
+// ─── GET /api/markets/personalized ───────────────────────────────────────────
+router.get('/markets/personalized', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+
+    const dbCount = await Market.countDocuments();
+    if (dbCount === 0) {
+      // Fallback to mock trending when DB is empty
+      return res.json({ markets: getMockMarkets(), source: 'mock', reason: 'empty_db' });
+    }
+
+    // 1. Who does this user follow?
+    const followedUsers = await User.find({ followedBy: userId }).select('_id telegramId').lean();
+    const creatorIds = followedUsers.flatMap(u => [u._id.toString(), u.telegramId].filter(Boolean));
+
+    // 2. User's top categories based on bet history
+    const betsByCategory = await Bet.aggregate([
+      { $match: { userId } },
+      {
+        $lookup: {
+          from: 'markets',
+          localField: 'marketId',
+          foreignField: '_id',
+          as: 'market',
+        },
+      },
+      { $unwind: { path: '$market', preserveNullAndEmpty: false } },
+      { $group: { _id: '$market.category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 2 },
+    ]);
+    const topCategories = betsByCategory.map(b => b._id).filter(Boolean);
+
+    // 3. Fetch markets in parallel
+    const [followedMarkets, categoryMarkets] = await Promise.all([
+      creatorIds.length > 0
+        ? Market.find({ creatorId: { $in: creatorIds }, status: 'active' })
+            .sort({ trendingScore: -1, createdAt: -1 })
+            .limit(15)
+            .lean()
+        : [],
+      topCategories.length > 0
+        ? Market.find({ category: { $in: topCategories }, status: 'active' })
+            .sort({ trendingScore: -1 })
+            .limit(15)
+            .lean()
+        : [],
+    ]);
+
+    // 4. Merge + deduplicate
+    const seen = new Set();
+    let merged = [...followedMarkets, ...categoryMarkets].filter(m => {
+      const k = m._id.toString();
+      if (seen.has(k)) return false;
+      seen.add(k); return true;
+    });
+
+    // 5. Pad with trending if sparse
+    let reason = 'personalized';
+    if (merged.length < 4) {
+      reason = merged.length === 0 ? 'trending_fallback' : 'padded_with_trending';
+      const padIds = merged.map(m => m._id);
+      const fill = await Market.find({
+        status: 'active',
+        _id: { $nin: padIds },
+      }).sort({ trendingScore: -1, totalYes: -1 }).limit(20).lean();
+      merged = [...merged, ...fill];
+    }
+
+    res.json({ markets: merged, source: 'db', reason, topCategories });
+  } catch (err) {
+    logger.error(`GET /markets/personalized error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /api/markets ────────────────────────────────────────────────────────
 router.get('/markets', async (req, res) => {
   try {
