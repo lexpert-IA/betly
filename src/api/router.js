@@ -5,9 +5,20 @@ const Bet = require('../../db/models/Bet');
 const Comment = require('../../db/models/Comment');
 const User = require('../../db/models/User');
 const Vote = require('../../db/models/Vote');
+const Notification = require('../../db/models/Notification');
 const { analyzeMarket } = require('../agents/moderator');
 const { checkForFraud } = require('../agents/watcher');
 const logger = require('../utils/logger');
+
+// ─── Notification helper ─────────────────────────────────────────────────────
+async function notify({ userId, type, message, marketId = null, fromUser = null, amount = null }) {
+  try {
+    if (!userId) return;
+    await Notification.create({ userId, type, message, marketId, fromUser, amount });
+  } catch (e) {
+    logger.error(`notify error: ${e.message}`);
+  }
+}
 
 // ─── Mock markets for empty DB ──────────────────────────────────────────────
 function getMockMarkets() {
@@ -416,6 +427,20 @@ router.post('/markets/:id/comments', async (req, res) => {
 
     await Market.findByIdAndUpdate(id, { $inc: { commentsCount: 1 } });
 
+    // Notify market creator (not self)
+    const mkt = await Market.findById(id).lean();
+    if (mkt && mkt.creatorId && mkt.creatorId !== userId) {
+      const commenter = await User.findById(userId).lean();
+      const name = commenter?.username || userId.slice(0, 8);
+      await notify({
+        userId: mkt.creatorId,
+        type: 'new_comment',
+        message: `${name} a commenté sur ton marché "${mkt.title.slice(0, 40)}"`,
+        marketId: id,
+        fromUser: userId,
+      });
+    }
+
     res.status(201).json({ comment });
   } catch (err) {
     logger.error(`POST /markets/:id/comments error: ${err.message}`);
@@ -452,7 +477,7 @@ router.post('/markets/:id/vote', async (req, res) => {
     }
 
     // Weight by user reputation (1-3)
-    const user = await User.findOne({ telegramId: userId }).lean();
+    const user = await User.findOne({ $or: [{ _id: userId }, { telegramId: userId }] }).lean();
     const weight = user ? Math.min(3, Math.max(1, Math.floor((user.reputation || 50) / 34))) : 1;
 
     await Vote.create({ userId, marketId: id, vote, weight });
@@ -532,11 +557,11 @@ router.get('/account', async (req, res) => {
     const { userId } = req.query;
     if (!userId) return res.status(401).json({ error: 'userId required' });
 
-    let user = await User.findOne({ telegramId: userId }).lean();
+    let user = await User.findOne({ $or: [{ _id: userId }, { telegramId: userId }] }).lean();
 
     if (!user) {
       user = {
-        telegramId: userId,
+        _id: userId,
         displayName: `User ${userId.slice(0, 6)}`,
         balance: 0,
         totalBets: 0,
@@ -619,7 +644,7 @@ router.post('/users/:id/follow', async (req, res) => {
     const { id } = req.params;
     if (id === userId) return res.status(400).json({ error: 'Cannot follow yourself' });
 
-    const target = await User.findOne({ telegramId: id });
+    const target = await User.findOne({ $or: [{ _id: id }, { telegramId: id }] });
     if (!target) return res.status(404).json({ error: 'User not found' });
 
     const isFollowing = target.followedBy.includes(userId);
@@ -630,9 +655,124 @@ router.post('/users/:id/follow', async (req, res) => {
     }
     await target.save();
 
+    // Notify on new follow (not unfollow)
+    if (!isFollowing) {
+      const follower = await User.findById(userId).lean();
+      const name = follower?.username || userId.slice(0, 8);
+      await notify({
+        userId: id,
+        type: 'new_follower',
+        message: `${name} te suit maintenant`,
+        fromUser: userId,
+      });
+    }
+
     res.json({ following: !isFollowing, followers: target.followedBy.length });
   } catch (err) {
     logger.error(`POST /users/:id/follow error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/auth/register ─────────────────────────────────────────────────
+router.post('/auth/register', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username || typeof username !== 'string') {
+      return res.status(400).json({ error: 'username required' });
+    }
+    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (clean.length < 3 || clean.length > 20) {
+      return res.status(400).json({ error: 'Pseudo: 3-20 caractères, lettres/chiffres/_/-' });
+    }
+
+    // Check uniqueness (by username field)
+    const existing = await User.findOne({ username: clean });
+    if (existing) {
+      return res.status(409).json({ error: 'Ce pseudo est déjà pris' });
+    }
+
+    // Compute avatar color
+    const palette = ['#7c3aed','#0891b2','#059669','#b45309','#be185d','#1d4ed8','#c2410c','#6d28d9'];
+    let h = 0;
+    for (let i = 0; i < clean.length; i++) h = (h * 31 + clean.charCodeAt(i)) & 0xffffffff;
+    const avatarColor = palette[Math.abs(h) % palette.length];
+
+    const user = await User.create({
+      username: clean,
+      displayName: username.trim(),
+      balance: 100, // starter balance
+      reputation: 50,
+    });
+
+    logger.info(`Auth register: ${clean} (${user._id})`);
+    res.status(201).json({
+      userId: user._id.toString(),
+      username: clean,
+      displayName: username.trim(),
+      avatarColor,
+      balance: 100,
+    });
+  } catch (err) {
+    logger.error(`POST /auth/register error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/auth/check ──────────────────────────────────────────────────────
+router.get('/auth/check', async (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username) return res.status(400).json({ error: 'username required' });
+    const clean = username.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const existing = await User.findOne({ username: clean });
+    res.json({ available: !existing, clean });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/notifications ───────────────────────────────────────────────────
+router.get('/notifications', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+
+    const notifications = await Notification.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    const unreadCount = await Notification.countDocuments({ userId, read: false });
+
+    res.json({ notifications, unreadCount });
+  } catch (err) {
+    logger.error(`GET /notifications error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/notifications/unread-count ─────────────────────────────────────
+router.get('/notifications/unread-count', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.json({ count: 0 });
+    const count = await Notification.countDocuments({ userId, read: false });
+    res.json({ count });
+  } catch (err) {
+    res.json({ count: 0 });
+  }
+});
+
+// ─── POST /api/notifications/read-all ────────────────────────────────────────
+router.post('/notifications/read-all', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+    await Notification.updateMany({ userId, read: false }, { $set: { read: true } });
+    res.json({ success: true });
+  } catch (err) {
+    logger.error(`POST /notifications/read-all error: ${err.message}`);
     res.status(500).json({ error: err.message });
   }
 });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ConfidenceBadge from './ConfidenceBadge';
 import BetBar from './BetBar';
 import { useUserId } from '../hooks/useApi';
+import { toast } from './ToastManager';
 
 // ── Category palette (matches betly HTML design) ─────────────────────────────
 const CATEGORIES = {
@@ -47,7 +48,8 @@ export default function MarketCard({ market, onBetPlaced }) {
 
   const handleBet = async () => {
     if (!userId) {
-      alert('Ajoute ?userId=TON_ID dans l\'URL pour parier.');
+      toast('Crée ton compte pour parier !', 'warning');
+      window.location.reload();
       return;
     }
     const amount = parseFloat(betAmount);
@@ -64,6 +66,7 @@ export default function MarketCard({ market, onBetPlaced }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
       setBetResult({ success: true, message: `Pari ${betSide} de ${amount} USDC placé !` });
+      toast(`Pari ${betSide === 'YES' ? 'OUI' : 'NON'} de ${amount} USDC placé ! 🎯`, 'success');
       if (onBetPlaced) onBetPlaced();
       setTimeout(() => { setBetSide(null); setBetResult(null); setBetAmount(''); }, 2000);
     } catch (err) {

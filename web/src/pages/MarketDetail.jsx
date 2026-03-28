@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
+import { useAuth } from '../hooks/useAuth';
 import ConfidenceBadge from '../components/ConfidenceBadge';
 import AiAnalysis from '../components/AiAnalysis';
+import { toast } from '../components/ToastManager';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CATEGORY_STYLE = {
@@ -123,7 +125,7 @@ function BetForm({ marketId, userId, onBetPlaced }) {
   async function place() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setMsg({ type: 'err', text: 'Montant invalide' }); return; }
-    if (!userId) { setMsg({ type: 'err', text: 'Connecte-toi d\'abord (ajoute ?userId=xxx dans l\'URL)' }); return; }
+    if (!userId) { toast('Crée ton compte pour parier !', 'warning'); window.location.reload(); return; }
     setLoading(true);
     setMsg(null);
     try {
@@ -136,6 +138,7 @@ function BetForm({ marketId, userId, onBetPlaced }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Erreur');
       setMsg({ type: 'ok', text: `Pari placé — ${amt} USDC sur ${side}` });
+      toast(`Pari ${side === 'YES' ? 'OUI' : 'NON'} de ${amt} USDC placé !`, 'success');
       setAmount('');
       onBetPlaced?.();
     } catch (e) {
@@ -265,7 +268,7 @@ function Comments({ marketId, userId }) {
 
   async function postComment() {
     if (!text.trim()) return;
-    if (!userId) { alert('Ajoute ?userId=xxx dans l\'URL pour commenter'); return; }
+    if (!userId) { toast('Crée ton compte pour commenter !', 'warning'); window.location.reload(); return; }
     setPosting(true);
     try {
       const base = import.meta.env.VITE_API_URL || '';
@@ -400,7 +403,7 @@ function CommunityVote({ marketId, userId }) {
   const userVote = data?.userVote;
 
   async function vote(side) {
-    if (!userId) { alert('Ajoute ?userId=xxx dans l\'URL pour voter'); return; }
+    if (!userId) { toast('Crée ton compte pour voter !', 'warning'); window.location.reload(); return; }
     setVoting(true);
     try {
       const base = import.meta.env.VITE_API_URL || '';

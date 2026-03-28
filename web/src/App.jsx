@@ -1,5 +1,8 @@
 import React from 'react';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import Topbar from './components/Topbar';
+import AuthModal from './components/AuthModal';
+import ToastManager from './components/ToastManager';
 import Feed from './pages/Feed';
 import CreateMarket from './pages/CreateMarket';
 import Leaderboard from './pages/Leaderboard';
@@ -19,26 +22,41 @@ function getPage() {
   return 'feed';
 }
 
-
-export default function App() {
+function AppInner() {
+  const { user } = useAuth();
   const page = getPage();
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f' }}>
+      {/* Auth modal — shown until user registers */}
+      {!user && <AuthModal />}
+
       <Topbar />
-      <main style={{ paddingBottom: '48px' }}>
-        {page === 'feed' && <Feed />}
-        {page === 'create' && <CreateMarket />}
-        {page === 'copy' && <BetlyCopy />}
+
+      <main style={{ paddingBottom: 48 }}>
+        {page === 'feed'      && <Feed />}
+        {page === 'create'    && <CreateMarket />}
+        {page === 'copy'      && <BetlyCopy />}
         {page === 'leaderboard' && <Leaderboard />}
-        {page === 'account' && <Account />}
-        {page === 'market' && (
+        {page === 'account'   && <Account />}
+        {page === 'market'    && (
           <MarketDetail marketId={window.location.pathname.split('/market/')[1]} />
         )}
-        {page === 'profile' && (
+        {page === 'profile'   && (
           <Profile profileId={window.location.pathname.split('/profile/')[1]} />
         )}
       </main>
+
+      {/* Global toast manager */}
+      <ToastManager />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   );
 }
