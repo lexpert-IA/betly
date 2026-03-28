@@ -5,6 +5,91 @@ import ConfidenceBadge from '../components/ConfidenceBadge';
 import AiAnalysis from '../components/AiAnalysis';
 import { toast } from '../components/ToastManager';
 
+// ── Share Button ──────────────────────────────────────────────────────────────
+function ShareButton({ market, yes, volume }) {
+  const [open, setOpen] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    function close(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  function copyLink() {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => { setCopied(false); setOpen(false); }, 1500);
+  }
+
+  function shareOnX() {
+    const url   = window.location.href;
+    const title = market?.title || '';
+    const text  = `Je parie OUI sur "${title.slice(0, 60)}" à ${yes}% 🎯\nRejoins BETLY → ${url}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', marginLeft: 'auto' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          padding: '5px 12px', borderRadius: 8,
+          background: open ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${open ? 'rgba(124,58,237,0.4)' : 'rgba(255,255,255,0.08)'}`,
+          color: open ? '#a855f7' : '#64748b',
+          fontSize: 12, cursor: 'pointer', transition: 'all .2s',
+          display: 'flex', alignItems: 'center', gap: 5,
+        }}
+      >
+        📤 Partager
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 50,
+          background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 10, padding: 6, minWidth: 180,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          <button
+            onClick={copyLink}
+            style={{
+              width: '100%', padding: '8px 12px', borderRadius: 7,
+              background: copied ? 'rgba(34,197,94,0.15)' : 'transparent',
+              border: 'none', color: copied ? '#22c55e' : '#e2e8f0',
+              fontSize: 13, cursor: 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 8, transition: 'all .2s',
+            }}
+            onMouseEnter={e => { if (!copied) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+            onMouseLeave={e => { if (!copied) e.currentTarget.style.background = 'transparent'; }}
+          >
+            {copied ? '✓ Copié !' : '📋 Copier le lien'}
+          </button>
+          <button
+            onClick={shareOnX}
+            style={{
+              width: '100%', padding: '8px 12px', borderRadius: 7,
+              background: 'transparent', border: 'none', color: '#e2e8f0',
+              fontSize: 13, cursor: 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 8, transition: 'background .2s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          >
+            𝕏 Partager sur X
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CATEGORY_STYLE = {
   sport:     { color: '#f87171', bg: 'rgba(248,113,113,0.12)', emoji: '⚽' },
@@ -675,17 +760,7 @@ export default function MarketDetail({ marketId }) {
                 · créé le {new Date(market.createdAt).toLocaleDateString('fr-FR')}
               </span>
               {/* Share */}
-              <button
-                onClick={() => { navigator.clipboard.writeText(window.location.href); }}
-                style={{
-                  marginLeft: 'auto', padding: '4px 10px', borderRadius: 6,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: '#64748b', fontSize: 11, cursor: 'pointer',
-                }}
-              >
-                📤 Partager
-              </button>
+              <ShareButton market={market} yes={yes} volume={(market.totalYes || 0) + (market.totalNo || 0)} />
             </div>
 
             {/* Description */}
