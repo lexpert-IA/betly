@@ -12,6 +12,8 @@ import ShareModal from '../components/ShareModal';
 import { apiFetch } from '../lib/api';
 import { fireWin } from '../utils/confetti';
 import { usePlaceBet } from '../hooks/usePlaceBet';
+import { useAccount } from 'wagmi';
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ── Share Button ──────────────────────────────────────────────────────────────
@@ -299,6 +301,8 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
   // On-chain hook (always called, React rules)
   const onChain = market?.onChainId != null;
   const { placeBet: placeBetOnChain, status: onChainStatus } = usePlaceBet();
+  const { address: walletAddress, isConnected: walletConnected } = useAccount();
+  const { setShowAuthFlow } = useDynamicContext();
 
   const PRESETS = [1, 2, 5, 10];
   const base = import.meta.env.VITE_API_URL || '';
@@ -327,7 +331,7 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
 
     // ── ON-CHAIN BET ──────────────────────────────────────────────
     if (onChain && placeBetOnChain) {
-      if (!userId) { setMsg({ type: 'err', text: 'Connecte ton wallet pour parier' }); openAuth(); return; }
+      if (!walletConnected) { setMsg({ type: 'err', text: 'Connecte ton wallet MetaMask pour parier on-chain' }); setShowAuthFlow(true); return; }
       setLoading(true); setMsg(null);
       try {
         const txHash = await placeBetOnChain(market.onChainId, side, amt);
