@@ -3507,7 +3507,7 @@ router.post('/pipeline/trigger', async (req, res) => {
 });
 
 // ─── Admin: set onChainId on a market ────────────────────────────────────────
-router.post('/api/markets/:id/set-onchain', async (req, res) => {
+router.post('/markets/:id/set-onchain', async (req, res) => {
   try {
     const { secret } = req.query;
     if (secret !== (process.env.ADMIN_SECRET || 'betly-admin-2025')) {
