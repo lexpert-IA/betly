@@ -327,13 +327,23 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
 
   async function place() {
     const amt = parseFloat(amount);
+    console.log('[BET DEBUG]', {
+      amt, side, onChain,
+      onChainId: market?.onChainId,
+      walletConnected, walletAddress,
+      userId,
+      hasPlaceBetFn: !!placeBetOnChain,
+      onChainStatus,
+    });
     if (!amt || amt <= 0) { setMsg({ type: 'err', text: 'Montant invalide' }); return; }
 
     // ── ON-CHAIN BET ──────────────────────────────────────────────
     if (onChain && placeBetOnChain) {
+      console.log('[BET DEBUG] on-chain path — walletConnected:', walletConnected, 'walletAddress:', walletAddress);
       if (!walletConnected) { setMsg({ type: 'err', text: 'Connecte ton wallet MetaMask pour parier on-chain' }); setShowAuthFlow(true); return; }
       setLoading(true); setMsg(null);
       try {
+        console.log('[BET DEBUG] calling placeBetOnChain —', { marketId: market.onChainId, side, amt });
         const txHash = await placeBetOnChain(market.onChainId, side, amt);
         const sideLabel = side === 'YES' ? 'Oui' : 'Non';
         setMsg({ type: 'ok', text: `Pari on-chain placé : $${amt} sur ${sideLabel}`, link: '/positions', txHash });
