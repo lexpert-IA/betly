@@ -1,6 +1,11 @@
 node_modules/
 web/node_modules/
+contracts/node_modules/
+contracts/artifacts/
+contracts/cache/
+contracts/.env
 .env
 *.log
 .DS_Store
 .vercel
+.env*.local

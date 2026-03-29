@@ -1,16 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ConfidenceBadge from './ConfidenceBadge';
 import BetBar from './BetBar';
-import { useUserId } from '../hooks/useApi';
-import { toast } from './ToastManager';
 
 // ── Category palette (matches betly HTML design) ─────────────────────────────
 const CATEGORIES = {
-  sport:     { color: '#f87171', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.2)',   label: '⚽ Sport' },
-  crypto:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.2)',  label: '₿ Crypto' },
-  politique: { color: '#c084fc', bg: 'rgba(168,85,247,0.15)', border: 'rgba(168,85,247,0.2)',  label: '🏛 Politique' },
-  culture:   { color: '#f472b6', bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.2)',  label: '🎭 Culture' },
-  autre:     { color: '#22d3ee', bg: 'rgba(6,182,212,0.15)',  border: 'rgba(6,182,212,0.2)',   label: '✨ Autre' },
+  sport:     { color: '#f87171', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.2)',   label: 'Sport' },
+  crypto:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.2)',  label: 'Crypto' },
+  politique: { color: '#c084fc', bg: 'rgba(168,85,247,0.15)', border: 'rgba(168,85,247,0.2)',  label: 'Politique' },
+  culture:   { color: '#f472b6', bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.2)',  label: 'Culture' },
+  autre:     { color: '#22d3ee', bg: 'rgba(6,182,212,0.15)',  border: 'rgba(6,182,212,0.2)',   label: 'Autre' },
 };
 
 // ── Avatar color pool ─────────────────────────────────────────────────────────
@@ -26,6 +24,11 @@ function avatarInitials(id) {
   return id.slice(0, 2).toUpperCase();
 }
 
+function resolveCreatorName(creatorId) {
+  if (!creatorId || creatorId === 'system' || creatorId === 'BETLY') return 'BETLY';
+  return creatorId;
+}
+
 function timeRemaining(resolutionDate) {
   const diff = new Date(resolutionDate) - Date.now();
   if (diff <= 0) return 'Expiré';
@@ -37,44 +40,10 @@ function timeRemaining(resolutionDate) {
   return `${mins}min`;
 }
 
-export default function MarketCard({ market, onBetPlaced }) {
-  const userId = useUserId();
-  const [betSide, setBetSide] = useState(null);
-  const [betAmount, setBetAmount] = useState('');
-  const [betting, setBetting] = useState(false);
-  const [betResult, setBetResult] = useState(null);
-
+export default function MarketCard({ market }) {
   const cat = CATEGORIES[market.category] || CATEGORIES.autre;
-
-  const handleBet = async () => {
-    if (!userId) {
-      toast('Crée ton compte pour parier !', 'warning');
-      window.location.reload();
-      return;
-    }
-    const amount = parseFloat(betAmount);
-    if (!amount || amount <= 0) return;
-
-    setBetting(true);
-    try {
-      const base = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${base}/api/markets/${market._id}/bet?userId=${userId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ side: betSide, amount }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur');
-      setBetResult({ success: true, message: `Pari ${betSide} de ${amount} USDC placé !` });
-      toast(`Pari ${betSide === 'YES' ? 'OUI' : 'NON'} de ${amount} USDC placé ! 🎯`, 'success');
-      if (onBetPlaced) onBetPlaced();
-      setTimeout(() => { setBetSide(null); setBetResult(null); setBetAmount(''); }, 2000);
-    } catch (err) {
-      setBetResult({ success: false, message: err.message });
-    } finally {
-      setBetting(false);
-    }
-  };
+  const yes = Math.round(((market.totalYes || 0) / ((market.totalYes || 0) + (market.totalNo || 0) || 1)) * 100);
+  const no = 100 - yes;
 
   return (
     <div
@@ -116,9 +85,9 @@ export default function MarketCard({ market, onBetPlaced }) {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc', marginBottom: 1 }}>
-            {market.creatorId === 'system' ? 'BETLY' : `User ${(market.creatorId || '').slice(0, 8)}`}
+            {resolveCreatorName(market.creatorId)}
           </div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>⏰ {timeRemaining(market.resolutionDate)}</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{timeRemaining(market.resolutionDate)}</div>
         </div>
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '3px 10px',
@@ -129,6 +98,28 @@ export default function MarketCard({ market, onBetPlaced }) {
           {cat.label}
         </span>
       </div>
+
+      {/* Creator market badge */}
+      {market.creatorMarket && market.subjectHandle && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <img
+            src={`https://unavatar.io/${market.subjectPlatform || 'twitter'}/${market.subjectHandle}`}
+            alt={market.subjectHandle}
+            style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover' }}
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+          />
+          <span style={{ fontSize: 11, color: '#a855f7', fontWeight: 700 }}>
+            @{market.subjectHandle}
+          </span>
+          {market.selfMarket && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, color: '#f59e0b',
+              background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
+              padding: '1px 5px', borderRadius: 999,
+            }}>Marché auto</span>
+          )}
+        </div>
+      )}
 
       {/* Question */}
       <a href={`/market/${market._id}`} style={{ textDecoration: 'none' }}>
@@ -171,138 +162,41 @@ export default function MarketCard({ market, onBetPlaced }) {
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748b' }}>
         <div style={{ display: 'flex', gap: 14 }}>
-          <span>💬 {market.commentsCount || 0}</span>
+          <span>{market.commentsCount || 0}</span>
           <ConfidenceBadge score={market.confidenceScore} />
         </div>
         <span style={{ color: '#64748b' }}>Oracle L{market.oracleLevel}</span>
       </div>
 
-      {/* Bet buttons */}
-      {betSide === null && (
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn-press"
-            onClick={() => setBetSide('YES')}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'rgba(124,58,237,0.15)', color: '#a855f7',
-              fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(124,58,237,0.3)'; e.currentTarget.style.boxShadow='0 0 16px rgba(124,58,237,.25)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='rgba(124,58,237,0.15)'; e.currentTarget.style.boxShadow='none'; }}
-          >
-            🟣 Miser OUI
-          </button>
-          <button
-            className="btn-press"
-            onClick={() => setBetSide('NO')}
-            style={{
-              flex: 1, padding: '9px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'rgba(148,163,184,0.1)', color: '#94a3b8',
-              fontSize: 13, fontWeight: 700, transition: 'all 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(148,163,184,0.2)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='rgba(148,163,184,0.1)'; }}
-          >
-            ⚪ Miser NON
-          </button>
-        </div>
-      )}
-
-      {/* Inline bet form */}
-      {betSide !== null && (
-        <div style={{
-          background: `${betSide === 'YES' ? 'rgba(124,58,237,0.08)' : 'rgba(148,163,184,0.06)'}`,
-          border: `1px solid ${betSide === 'YES' ? 'rgba(168,85,247,0.3)' : 'rgba(148,163,184,0.15)'}`,
-          borderRadius: 12, padding: 14,
-          display: 'flex', flexDirection: 'column', gap: 10,
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: betSide === 'YES' ? '#a855f7' : '#94a3b8' }}>
-            Miser {betSide === 'YES' ? 'OUI' : 'NON'}
-          </div>
-          {betResult ? (
-            <div style={{ fontSize: 13, color: betResult.success ? '#a855f7' : '#ef4444', textAlign: 'center', padding: '4px 0' }}>
-              {betResult.message}
-            </div>
-          ) : (
-            <>
-              {/* Tactile slider + number input */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>Montant</span>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                    <input
-                      type="number" min="1" step="1"
-                      value={betAmount} onChange={e => setBetAmount(e.target.value)}
-                      style={{
-                        width: 72, padding: '5px 8px', borderRadius: 6,
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        background: '#0a0a0f', color: '#f8fafc', fontSize: 13, outline: 'none',
-                        textAlign: 'center',
-                      }}
-                    />
-                    <span style={{ fontSize: 11, color: '#64748b' }}>USDC</span>
-                  </div>
-                </div>
-                <input
-                  type="range" min="1" max="100" step="1"
-                  value={betAmount || 1}
-                  onChange={e => setBetAmount(e.target.value)}
-                  style={{ width: '100%', accentColor: betSide === 'YES' ? '#a855f7' : '#94a3b8', cursor: 'pointer' }}
-                />
-                {/* Quick amounts */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {[5, 10, 25, 50].map(amt => (
-                    <button
-                      key={amt}
-                      type="button"
-                      onClick={() => setBetAmount(String(amt))}
-                      style={{
-                        flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        background: String(betAmount) === String(amt) ? 'rgba(168,85,247,0.2)' : 'transparent',
-                        color: String(betAmount) === String(amt) ? '#a855f7' : '#64748b',
-                        transition: 'all .1s',
-                      }}
-                    >
-                      ${amt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={handleBet}
-                  disabled={betting || !betAmount}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: 8, border: 'none',
-                    background: betSide === 'YES'
-                      ? 'linear-gradient(135deg, #7c3aed, #a855f7)'
-                      : 'rgba(148,163,184,0.25)',
-                    color: '#fff', fontSize: 12, fontWeight: 700,
-                    cursor: betting || !betAmount ? 'not-allowed' : 'pointer',
-                    opacity: betting || !betAmount ? 0.6 : 1,
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {betting ? 'Envoi…' : 'Confirmer'}
-                </button>
-                <button
-                  onClick={() => { setBetSide(null); setBetAmount(''); setBetResult(null); }}
-                  style={{
-                    padding: '8px 14px', borderRadius: 8,
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    background: 'transparent', color: '#94a3b8',
-                    fontSize: 12, cursor: 'pointer',
-                  }}
-                >
-                  Annuler
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {/* Bet buttons — link to market page */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <a
+          href={`/market/${market._id}`}
+          style={{
+            flex: 1, padding: '10px 0', borderRadius: 10, textDecoration: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+            color: '#22c55e', fontSize: 13, fontWeight: 700, transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background='rgba(34,197,94,0.18)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background='rgba(34,197,94,0.1)'; }}
+        >
+          Oui {yes}¢
+        </a>
+        <a
+          href={`/market/${market._id}`}
+          style={{
+            flex: 1, padding: '10px 0', borderRadius: 10, textDecoration: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
+            color: '#ef4444', fontSize: 13, fontWeight: 700, transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,0.15)'; }}
+          onMouseLeave={e => { e.currentTarget.style.background='rgba(239,68,68,0.08)'; }}
+        >
+          Non {no}¢
+        </a>
+      </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
 import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -6,6 +6,13 @@ import ConfidenceBadge from '../components/ConfidenceBadge';
 import AiAnalysis from '../components/AiAnalysis';
 import CopyTradeButton from '../components/CopyTradeButton';
 import { toast } from '../components/ToastManager';
+import ReportButton from '../components/ReportButton';
+import BetShareCard from '../components/BetShareCard';
+import ShareModal from '../components/ShareModal';
+import { apiFetch } from '../lib/api';
+import { fireWin } from '../utils/confetti';
+import { usePlaceBet } from '../hooks/usePlaceBet';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // ── Share Button ──────────────────────────────────────────────────────────────
 function ShareButton({ market, yes, volume }) {
@@ -31,7 +38,7 @@ function ShareButton({ market, yes, volume }) {
   function shareOnX() {
     const url   = window.location.href;
     const title = market?.title || '';
-    const text  = `Je parie OUI sur "${title.slice(0, 60)}" à ${yes}% 🎯\nRejoins BETLY → ${url}`;
+    const text  = `Je parie OUI sur "${title.slice(0, 60)}" à ${yes}%\nRejoins BETLY → ${url}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
     setOpen(false);
   }
@@ -49,7 +56,7 @@ function ShareButton({ market, yes, volume }) {
           display: 'flex', alignItems: 'center', gap: 5,
         }}
       >
-        📤 Partager
+        Partager
       </button>
 
       {open && (
@@ -71,7 +78,7 @@ function ShareButton({ market, yes, volume }) {
             onMouseEnter={e => { if (!copied) e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
             onMouseLeave={e => { if (!copied) e.currentTarget.style.background = 'transparent'; }}
           >
-            {copied ? '✓ Copié !' : '📋 Copier le lien'}
+            {copied ? '✓ Copié !' : 'Copier le lien'}
           </button>
           <button
             onClick={shareOnX}
@@ -94,11 +101,11 @@ function ShareButton({ market, yes, volume }) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const CATEGORY_STYLE = {
-  sport:     { color: '#f87171', bg: 'rgba(248,113,113,0.12)', emoji: '⚽' },
-  crypto:    { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  emoji: '₿'  },
-  politique: { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', emoji: '🏛' },
-  culture:   { color: '#f472b6', bg: 'rgba(244,114,182,0.12)', emoji: '🎭' },
-  autre:     { color: '#22d3ee', bg: 'rgba(34,211,238,0.12)',  emoji: '💡' },
+  sport:     { color: '#f87171', bg: 'rgba(248,113,113,0.12)', emoji: '' },
+  crypto:    { color: '#fbbf24', bg: 'rgba(251,191,36,0.12)',  emoji: ''  },
+  politique: { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)', emoji: '' },
+  culture:   { color: '#f472b6', bg: 'rgba(244,114,182,0.12)', emoji: '' },
+  autre:     { color: '#22d3ee', bg: 'rgba(34,211,238,0.12)',  emoji: '' },
 };
 
 function timeLeft(deadline) {
@@ -120,8 +127,8 @@ function avatarColor(str = '') {
 }
 
 // ── SVG Probability Chart ─────────────────────────────────────────────────────
-function ProbChart({ yesPct }) {
-  const W = 600, H = 80, pts = 40;
+function ProbChart({ yesPct, compact = false }) {
+  const W = 600, H = compact ? 50 : 80, pts = 40;
   // Seeded deterministic path trending toward yesPct
   const seed = Math.round(yesPct * 100);
   const points = Array.from({ length: pts }, (_, i) => {
@@ -140,7 +147,7 @@ function ProbChart({ yesPct }) {
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 80, display: 'block' }} preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: compact ? 50 : 80, display: 'block' }} preserveAspectRatio="none">
         <defs>
           <linearGradient id="chartGrad" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#7c3aed" stopOpacity="0.35" />
@@ -153,11 +160,87 @@ function ProbChart({ yesPct }) {
         <circle cx={W} cy={lastY} r="4" fill="#a855f7" />
       </svg>
       {/* Y-axis labels */}
-      <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: 80, pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: 0, right: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: compact ? 50 : 80, pointerEvents: 'none' }}>
         {[100, 50, 0].map(v => (
           <span key={v} style={{ fontSize: 9, color: '#6060a0', lineHeight: 1 }}>{v}%</span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── Real Price Chart (Recharts) ───────────────────────────────────────────────
+const TIMEFRAMES = [
+  { label: '24h', hours: 24 },
+  { label: '7j',  hours: 168 },
+  { label: 'Tout', hours: 0 },
+];
+
+function PriceChartReal({ marketId, yesPct }) {
+  const [snapshots, setSnapshots] = useState([]);
+  const [tf, setTf]               = useState('24h');
+  const [loaded, setLoaded]       = useState(false);
+  const base = import.meta.env.VITE_API_URL || '';
+
+  useEffect(() => {
+    if (!marketId || marketId.startsWith('mock-')) { setLoaded(true); return; }
+    const hours = TIMEFRAMES.find(t => t.label === tf)?.hours || 24;
+    fetch(`${base}/api/markets/${marketId}/snapshots?hours=${hours}`)
+      .then(r => r.json())
+      .then(d => { setSnapshots(d.snapshots || []); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, [marketId, tf]);
+
+  const hasData = loaded && snapshots.length >= 2;
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    return tf === '24h'
+      ? d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <span style={{ fontSize: 11, color: '#64748b' }}>
+          Probabilité OUI · {hasData ? 'historique réel' : 'estimée'}
+        </span>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {TIMEFRAMES.map(t => (
+            <button
+              key={t.label}
+              onClick={() => setTf(t.label)}
+              style={{
+                padding: '2px 8px', borderRadius: 5, border: 'none', cursor: 'pointer', fontSize: 10,
+                background: tf === t.label ? 'rgba(168,85,247,0.2)' : 'transparent',
+                color: tf === t.label ? '#a855f7' : '#475569',
+                fontWeight: tf === t.label ? 700 : 400,
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#a855f7', marginLeft: 6 }}>{yesPct}%</span>
+        </div>
+      </div>
+
+      {hasData ? (
+        <ResponsiveContainer width="100%" height={80}>
+          <LineChart data={snapshots} margin={{ top: 4, right: 4, left: -32, bottom: 0 }}>
+            <XAxis dataKey="timestamp" tickFormatter={formatTime} tick={{ fontSize: 9, fill: '#475569' }} interval="preserveStartEnd" />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: '#475569' }} />
+            <Tooltip
+              formatter={(v) => [`${v.toFixed(1)}%`, 'OUI']}
+              labelFormatter={formatTime}
+              contentStyle={{ background: '#111118', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, fontSize: 11 }}
+            />
+            <Line type="monotone" dataKey="priceYes" stroke="#a855f7" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      ) : (
+        <ProbChart yesPct={yesPct} />
+      )}
     </div>
   );
 }
@@ -201,32 +284,109 @@ function BigBars({ yes, no, yesVol, noVol }) {
 }
 
 // ── Bet Form ──────────────────────────────────────────────────────────────────
-function BetForm({ marketId, userId, onBetPlaced }) {
-  const [side, setSide]     = useState('YES');
-  const [amount, setAmount] = useState('');
+function BetForm({ marketId, userId, onBetPlaced, market }) {
+  const { refreshUser, openAuth } = useAuth();
+  const [side, setSide]       = useState('YES');
+  const [amount, setAmount]   = useState('');
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg]       = useState(null);
+  const [msg, setMsg]         = useState(null);
+  const [quote, setQuote]     = useState(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [needConfirm, setNeedConfirm]   = useState(false);
+  const [shareBet, setShareBet]         = useState(null);
+  const quoteTimer = useRef(null);
 
-  const PRESETS = [5, 10, 25, 50];
+  // On-chain hook (always called, React rules)
+  const onChain = market?.onChainId != null;
+  const { placeBet: placeBetOnChain, status: onChainStatus } = usePlaceBet();
+
+  const PRESETS = [1, 2, 5, 10];
+  const base = import.meta.env.VITE_API_URL || '';
+
+  // Debounced quote fetch — only for off-chain markets
+  useEffect(() => {
+    if (onChain) return; // skip API quote for on-chain
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { setQuote(null); return; }
+    setQuoteLoading(true);
+    clearTimeout(quoteTimer.current);
+    quoteTimer.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`${base}/api/markets/${marketId}/quote?side=${side}&amount=${amt}`);
+        const d = await r.json();
+        setQuote(r.ok ? d : null);
+      } catch { setQuote(null); }
+      finally { setQuoteLoading(false); }
+    }, 300);
+    return () => clearTimeout(quoteTimer.current);
+  }, [amount, side, marketId, onChain]);
 
   async function place() {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setMsg({ type: 'err', text: 'Montant invalide' }); return; }
-    if (!userId) { toast('Crée ton compte pour parier !', 'warning'); window.location.reload(); return; }
-    setLoading(true);
-    setMsg(null);
+
+    // ── ON-CHAIN BET ──────────────────────────────────────────────
+    if (onChain && placeBetOnChain) {
+      if (!userId) { setMsg({ type: 'err', text: 'Connecte ton wallet pour parier' }); openAuth(); return; }
+      setLoading(true); setMsg(null);
+      try {
+        const txHash = await placeBetOnChain(market.onChainId, side, amt);
+        const sideLabel = side === 'YES' ? 'Oui' : 'Non';
+        setMsg({ type: 'ok', text: `Pari on-chain placé : $${amt} sur ${sideLabel}`, link: '/positions', txHash });
+        toast(`$${amt} sur ${sideLabel} — tx confirmée !`, 'success', 5000);
+        fireWin();
+        setAmount('');
+        refreshUser?.();
+        onBetPlaced?.();
+      } catch (e) {
+        setMsg({ type: 'err', text: e.shortMessage || e.message || 'Transaction échouée' });
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // ── OFF-CHAIN BET (fallback for markets without onChainId) ──
+    if (!userId) { setMsg({ type: 'err', text: 'Connecte-toi pour parier' }); openAuth(); return; }
+
+    if (quote?.warning === 'high' && !needConfirm) {
+      setNeedConfirm(true);
+      setMsg({ type: 'warn', text: 'Slippage > 15% ! Clique à nouveau pour confirmer malgré tout.' });
+      return;
+    }
+
+    setLoading(true); setMsg(null); setNeedConfirm(false);
+
+    const orderId = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
     try {
-      const base = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${base}/api/markets/${marketId}/bet`, {
+      const res = await apiFetch(`/api/markets/${marketId}/bet`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, side, amount: amt }),
+        body: JSON.stringify({ side, amount: amt, orderId }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Erreur');
-      setMsg({ type: 'ok', text: `Pari placé — ${amt} USDC sur ${side}` });
-      toast(`Pari ${side === 'YES' ? 'OUI' : 'NON'} de ${amt} USDC placé !`, 'success');
-      setAmount('');
+
+      if (!res.ok) throw new Error(json.error || json.message || `Erreur ${res.status}`);
+
+      const potential = quote?.potentialPayout || json.bet?.potentialPayout || 0;
+      const gain = potential > 0 ? potential - amt : 0;
+      const isHighGain = potential > 0 && potential / amt >= 2;
+      const sideLabel = side === 'YES' ? 'Oui' : 'Non';
+
+      if (json.isPartial) {
+        setMsg({ type: 'ok', text: `Mise partielle : $${json.filledAmount} sur $${amt}`, link: '/positions' });
+        toast(`Mise partielle : $${json.filledAmount}/${amt} sur ${sideLabel}`, 'success', 4000);
+      } else {
+        const gainTxt = gain > 0 ? ` — gain potentiel +$${gain.toFixed(2)}` : '';
+        setMsg({ type: 'ok', text: `Pari placé : $${amt} sur ${sideLabel}${gainTxt}`, link: '/positions' });
+        toast(`$${amt} sur ${sideLabel} placé !`, 'success', 4000);
+        if (isHighGain) fireWin();
+      }
+      setAmount(''); setQuote(null);
+      refreshUser?.();
       onBetPlaced?.();
     } catch (e) {
       setMsg({ type: 'err', text: e.message });
@@ -235,118 +395,227 @@ function BetForm({ marketId, userId, onBetPlaced }) {
     }
   }
 
+  const amt = parseFloat(amount) || 0;
+  const warn = quote?.warning;
+  const isApproving = onChainStatus === 'approving';
+  const isBetting   = onChainStatus === 'betting' || loading;
+
+  // Button label
+  let btnLabel = 'Entrer un montant';
+  if (isBetting || isApproving) btnLabel = isApproving ? 'Approbation USDC...' : 'Transaction en cours...';
+  else if (needConfirm) btnLabel = 'Confirmer malgré le slippage';
+  else if (amt > 0) btnLabel = onChain
+    ? `Parier $${amt.toFixed(2)} sur ${side === 'YES' ? 'Oui' : 'Non'} (on-chain)`
+    : `Parier $${amt.toFixed(2)} sur ${side === 'YES' ? 'Oui' : 'Non'}`;
+
   return (
-    <div style={{
-      background: '#0f0f1a',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 12,
-      padding: 20,
-    }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', marginBottom: 14 }}>Placer un pari</div>
+    <>
+    {shareBet && (
+      <ShareModal
+        variant="placed"
+        bet={shareBet}
+        market={market}
+        onClose={() => setShareBet(null)}
+      />
+    )}
+    <div style={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
+      {/* On-chain badge */}
+      {onChain && (
+        <div style={{
+          padding: '6px 14px', fontSize: 11, fontWeight: 700,
+          background: 'rgba(34,197,94,0.06)', color: '#22c55e',
+          borderBottom: '1px solid rgba(34,197,94,0.15)',
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block' }} />
+          On-chain — USDC prélevé depuis ton wallet
+        </div>
+      )}
 
-      {/* Side buttons */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {['YES', 'NO'].map(s => (
-          <button
-            key={s}
-            onClick={() => setSide(s)}
-            style={{
-              flex: 1, padding: '10px 0', borderRadius: 8, cursor: 'pointer',
-              fontWeight: 700, fontSize: 14, transition: 'all .2s',
-              border: side === s
-                ? (s === 'YES' ? '1px solid #a855f7' : '1px solid #94a3b8')
-                : '1px solid rgba(255,255,255,0.07)',
-              background: side === s
-                ? (s === 'YES' ? 'linear-gradient(135deg,#7c3aed,#a855f7)' : 'rgba(148,163,184,0.2)')
-                : 'transparent',
-              color: side === s ? '#fff' : '#64748b',
-            }}
-          >
-            {s === 'YES' ? '✓ OUI' : '✗ NON'}
-          </button>
-        ))}
-      </div>
-
-      {/* Amount */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 6 }}>Montant (USDC)</div>
-        <input
-          type="number"
-          min="0.01"
-          step="0.01"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          placeholder="0.00"
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 8,
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#f8fafc', fontSize: 15, fontWeight: 600,
-            outline: 'none', boxSizing: 'border-box',
-          }}
-        />
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-          {PRESETS.map(p => (
-            <button
-              key={p}
-              onClick={() => setAmount(String(p))}
-              style={{
-                flex: 1, padding: '4px 0', borderRadius: 6, cursor: 'pointer',
-                fontSize: 11, fontWeight: 600,
-                border: '1px solid rgba(255,255,255,0.07)',
-                background: 'rgba(255,255,255,0.04)', color: '#94a3b8',
-              }}
-            >
-              ${p}
+      {/* Side tabs — Polymarket style */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {['YES', 'NO'].map(s => {
+          const active = side === s;
+          const isYes = s === 'YES';
+          return (
+            <button key={s} onClick={() => { setSide(s); setNeedConfirm(false); }} style={{
+              flex: 1, padding: '14px 0', cursor: 'pointer',
+              fontWeight: 700, fontSize: 14, letterSpacing: '0.02em',
+              border: 'none', transition: 'all .15s',
+              borderBottom: active ? `2px solid ${isYes ? '#22c55e' : '#ef4444'}` : '2px solid transparent',
+              background: active ? (isYes ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)') : 'transparent',
+              color: active ? (isYes ? '#22c55e' : '#ef4444') : '#64748b',
+            }}>
+              {isYes ? 'Oui' : 'Non'} {quote ? `${(quote.currentOdds * 100).toFixed(0)}¢` : ''}
             </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Potential gain */}
-      {amount && parseFloat(amount) > 0 && (
-        <div style={{
-          padding: '8px 10px', borderRadius: 6,
-          background: 'rgba(124,58,237,0.08)',
-          border: '1px solid rgba(124,58,237,0.15)',
-          fontSize: 12, color: '#a78bfa', marginBottom: 12,
-        }}>
-          Gain potentiel estimé: ~{(parseFloat(amount) * 1.85).toFixed(2)} USDC
+      <div style={{ padding: '18px 18px 20px' }}>
+        {/* Amount input — clean, large */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 8, fontWeight: 500 }}>Montant</div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 0,
+            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 10, overflow: 'hidden', transition: 'border-color .15s',
+          }}>
+            <span style={{
+              padding: '0 12px', fontSize: 14, color: '#64748b', fontWeight: 600,
+              borderRight: '1px solid rgba(255,255,255,0.06)',
+              display: 'flex', alignItems: 'center', height: 44,
+            }}>$</span>
+            <input
+              type="number" min="0.01" step="0.01" value={amount}
+              onChange={e => { setAmount(e.target.value); setNeedConfirm(false); }}
+              placeholder="0.00"
+              style={{
+                flex: 1, padding: '12px 14px', border: 'none', background: 'transparent',
+                color: '#f8fafc', fontSize: 18, fontWeight: 700, outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+            <span style={{ padding: '0 14px', fontSize: 12, color: '#64748b', fontWeight: 600 }}>USDC</span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+            {PRESETS.map(p => {
+              const selected = amount === String(p);
+              return (
+                <button key={p} onClick={() => { setAmount(String(p)); setNeedConfirm(false); }} style={{
+                  flex: 1, padding: '7px 0', borderRadius: 8, cursor: 'pointer',
+                  fontSize: 12, fontWeight: 600, transition: 'all .15s',
+                  border: selected ? '1px solid rgba(124,58,237,0.5)' : '1px solid rgba(255,255,255,0.08)',
+                  background: selected ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.03)',
+                  color: selected ? '#a855f7' : '#94a3b8',
+                }}>
+                  ${p}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      )}
 
-      <button
-        onClick={place}
-        disabled={loading}
-        style={{
-          width: '100%', padding: '12px 0', borderRadius: 8,
-          background: loading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg,#7c3aed,#a855f7)',
-          color: loading ? '#6060a0' : '#fff',
-          border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
-          fontWeight: 700, fontSize: 14,
-          boxShadow: loading ? 'none' : '0 0 20px rgba(124,58,237,0.35)',
-          transition: 'all .2s',
-        }}
-      >
-        {loading ? '⟳ En cours...' : `Parier ${amount ? parseFloat(amount).toFixed(2) : '0'} USDC`}
-      </button>
+        {/* Quote / breakdown */}
+        {amt > 0 && !onChain && (
+          <div style={{ marginBottom: 14 }}>
+            {quoteLoading ? (
+              <div style={{ padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.02)', fontSize: 12, color: '#64748b', textAlign: 'center' }}>
+                Calcul du prix...
+              </div>
+            ) : quote ? (
+              <>
+                {warn && (
+                  <div style={{
+                    padding: '8px 12px', borderRadius: 8, marginBottom: 8, fontSize: 12, fontWeight: 600,
+                    background: warn === 'high' ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+                    border: `1px solid ${warn === 'high' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                    color: warn === 'high' ? '#ef4444' : '#f59e0b',
+                  }}>
+                    {warn === 'high'
+                      ? `Slippage ${quote.slippage?.toFixed(1)}% — prix volatile`
+                      : `Slippage ${quote.slippage?.toFixed(1)}%`}
+                  </div>
+                )}
+                <div style={{
+                  padding: '12px 14px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                    <span>Prix moyen</span>
+                    <span style={{ color: '#e2e2e8', fontWeight: 600 }}>{(quote.currentOdds * 100).toFixed(1)}¢</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                    <span>Gain potentiel</span>
+                    <span style={{ color: '#22c55e', fontWeight: 700 }}>
+                      ${quote.potentialPayout?.toFixed(2)} <span style={{ fontSize: 11, color: '#64748b', fontWeight: 400 }}>({((quote.potentialPayout / amt - 1) * 100).toFixed(0)}%)</span>
+                    </span>
+                  </div>
+                  <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 600, color: '#f8fafc' }}>Gain net</span>
+                    <span style={{ fontWeight: 800, color: '#22c55e', fontSize: 15 }}>+${quote.netProfit?.toFixed(2)}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{
+                padding: '10px 12px', borderRadius: 8,
+                background: 'rgba(124,58,237,0.06)',
+                fontSize: 12, color: '#a78bfa', textAlign: 'center',
+              }}>
+                Gain estimé : ~${(amt * 1.85).toFixed(2)} USDC
+              </div>
+            )}
+          </div>
+        )}
 
-      {msg && (
-        <div style={{
-          marginTop: 10, padding: '8px 10px', borderRadius: 6, fontSize: 12,
-          background: msg.type === 'ok' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-          border: `1px solid ${msg.type === 'ok' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-          color: msg.type === 'ok' ? '#22c55e' : '#ef4444',
-        }}>
-          {msg.text}
-        </div>
-      )}
+        {/* On-chain: simple payout estimate */}
+        {amt > 0 && onChain && (
+          <div style={{
+            marginBottom: 14, padding: '10px 12px', borderRadius: 8,
+            background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
+            fontSize: 12, color: '#22c55e',
+          }}>
+            Pari on-chain — ${amt.toFixed(2)} USDC seront prélevés de ton wallet via le smart contract.
+            <br /><span style={{ color: '#64748b' }}>Fee: 2% • Payout proportionnel au pool total.</span>
+          </div>
+        )}
+
+        {/* Place bet button */}
+        <button
+          onClick={place} disabled={isBetting || isApproving}
+          style={{
+            width: '100%', padding: '14px 0', borderRadius: 10, border: 'none',
+            background: (isBetting || isApproving) ? 'rgba(255,255,255,0.05)'
+              : needConfirm ? 'linear-gradient(135deg,#b91c1c,#ef4444)'
+              : side === 'YES' ? 'linear-gradient(135deg,#15803d,#22c55e)' : 'linear-gradient(135deg,#b91c1c,#ef4444)',
+            color: (isBetting || isApproving) ? '#64748b' : '#fff',
+            cursor: (isBetting || isApproving) ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 15,
+            transition: 'all .15s',
+          }}
+        >
+          {btnLabel}
+        </button>
+
+        {msg && (
+          <div style={{
+            marginTop: 10, padding: '10px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+            background: msg.type === 'ok' ? 'rgba(34,197,94,0.08)' : msg.type === 'warn' ? 'rgba(245,158,11,0.08)' : 'rgba(239,68,68,0.08)',
+            border: `1px solid ${msg.type === 'ok' ? 'rgba(34,197,94,0.2)' : msg.type === 'warn' ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            color: msg.type === 'ok' ? '#22c55e' : msg.type === 'warn' ? '#f59e0b' : '#ef4444',
+          }}>
+            {msg.text}
+            {msg.txHash && (
+              <a href={`https://www.oklink.com/amoy/tx/${msg.txHash}`} target="_blank" rel="noopener noreferrer" style={{
+                display: 'block', marginTop: 4, fontSize: 11, fontWeight: 700,
+                color: '#60a5fa', textDecoration: 'none',
+              }}>
+                Voir la transaction →
+              </a>
+            )}
+            {msg.link && (
+              <a href={msg.link} style={{
+                display: 'block', marginTop: 6, fontSize: 11, fontWeight: 700,
+                color: '#a855f7', textDecoration: 'none',
+              }}>
+                Voir mes positions →
+              </a>
+            )}
+          </div>
+        )}
+
+
+      </div>
     </div>
+    </>
   );
 }
 
 // ── Comments Section ──────────────────────────────────────────────────────────
 function Comments({ marketId, userId }) {
+  const { openAuth } = useAuth();
   const { data, loading, refetch } = useApi(`/api/markets/${marketId}/comments`);
   const [text, setText] = useState('');
   const [posting, setPosting] = useState(false);
@@ -355,14 +624,13 @@ function Comments({ marketId, userId }) {
 
   async function postComment() {
     if (!text.trim()) return;
-    if (!userId) { toast('Crée ton compte pour commenter !', 'warning'); window.location.reload(); return; }
+    if (!userId) { toast('Connecte-toi pour commenter !', 'warning'); openAuth(); return; }
     setPosting(true);
     try {
-      const base = import.meta.env.VITE_API_URL || '';
-      await fetch(`${base}/api/markets/${marketId}/comments`, {
+      await apiFetch(`/api/markets/${marketId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, content: text.trim() }),
+        body: JSON.stringify({ content: text.trim() }),
       });
       setText('');
       refetch();
@@ -380,7 +648,7 @@ function Comments({ marketId, userId }) {
   return (
     <div>
       <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', marginBottom: 16 }}>
-        💬 Commentaires <span style={{ color: '#64748b', fontWeight: 400, fontSize: 12 }}>({comments.length})</span>
+        Commentaires <span style={{ color: '#64748b', fontWeight: 400, fontSize: 12 }}>({comments.length})</span>
       </div>
 
       {/* Post */}
@@ -460,15 +728,18 @@ function Comments({ marketId, userId }) {
                   </span>
                 </div>
                 <p style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.5, margin: 0 }}>{c.content}</p>
-                <button
-                  onClick={() => likeComment(c._id)}
-                  style={{
-                    marginTop: 6, background: 'none', border: 'none',
-                    cursor: 'pointer', color: '#64748b', fontSize: 11, padding: 0,
-                  }}
-                >
-                  ♡ {c.likes || 0}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                  <button
+                    onClick={() => likeComment(c._id)}
+                    style={{
+                      background: 'none', border: 'none',
+                      cursor: 'pointer', color: '#64748b', fontSize: 11, padding: 0,
+                    }}
+                  >
+                    ♡ {c.likes || 0}
+                  </button>
+                  <ReportButton commentId={c._id} />
+                </div>
               </div>
             </div>
           ))}
@@ -480,6 +751,7 @@ function Comments({ marketId, userId }) {
 
 // ── Community Vote ────────────────────────────────────────────────────────────
 function CommunityVote({ marketId, userId }) {
+  const { openAuth } = useAuth();
   const { data, refetch } = useApi(`/api/markets/${marketId}/votes`);
   const [voting, setVoting] = useState(false);
 
@@ -490,11 +762,10 @@ function CommunityVote({ marketId, userId }) {
   const userVote = data?.userVote;
 
   async function vote(side) {
-    if (!userId) { toast('Crée ton compte pour voter !', 'warning'); window.location.reload(); return; }
+    if (!userId) { toast('Connecte-toi pour voter !', 'warning'); openAuth(); return; }
     setVoting(true);
     try {
-      const base = import.meta.env.VITE_API_URL || '';
-      await fetch(`${base}/api/markets/${marketId}/vote?userId=${encodeURIComponent(userId)}`, {
+      await apiFetch(`/api/markets/${marketId}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vote: side }),
@@ -512,7 +783,7 @@ function CommunityVote({ marketId, userId }) {
       borderRadius: 12, padding: 16,
     }}>
       <div style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', marginBottom: 12 }}>
-        🗳 Vote communautaire (L3)
+        Vote communautaire (L3)
       </div>
       <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
         {['YES', 'NO'].map(s => (
@@ -559,19 +830,12 @@ function CommunityVote({ marketId, userId }) {
 }
 
 // ── Activity Feed (sidebar) ───────────────────────────────────────────────────
-function ActivityFeed({ marketId }) {
+function ActivityFeed({ marketId, compact = false }) {
   const { data, loading } = useApi(`/api/markets/${marketId}/activity`, { interval: 15000, params: { limit: '10' } });
   const items = data?.items || [];
 
-  return (
-    <div style={{
-      background: '#0f0f1a',
-      border: '1px solid rgba(255,255,255,0.08)',
-      borderRadius: 12, padding: 16,
-    }}>
-      <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 12 }}>
-        ⚡ Activité récente
-      </div>
+  const inner = (
+    <>
       {loading && <div style={{ fontSize: 12, color: '#64748b' }}>Chargement...</div>}
       {!loading && items.length === 0 && (
         <div style={{ fontSize: 12, color: '#64748b' }}>Aucune activité</div>
@@ -587,7 +851,7 @@ function ActivityFeed({ marketId }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11,
             }}>
-              {item.type === 'bet' ? (item.side === 'YES' ? '✓' : '✗') : '💬'}
+              {item.type === 'bet' ? (item.side === 'YES' ? '✓' : '✗') : 'C'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               {item.type === 'bet' ? (
@@ -618,6 +882,124 @@ function ActivityFeed({ marketId }) {
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (compact) return inner;
+
+  return (
+    <div style={{
+      background: '#0f0f1a',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: 12, padding: 16,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 12 }}>
+        Activité récente
+      </div>
+      {inner}
+    </div>
+  );
+}
+
+// ── Accordion wrapper ─────────────────────────────────────────────────────────
+function Accordion({ title, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', padding: '12px 16px', background: 'none', border: 'none',
+          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          color: '#f8fafc', fontSize: 12, fontWeight: 700,
+          minHeight: 44,
+        }}
+      >
+        <span>{title}</span>
+        <span style={{ color: '#64748b', fontSize: 10 }}>{open ? '▲' : '▼'}</span>
+      </button>
+      {open && <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '12px 16px' }}>{children}</div>}
+    </div>
+  );
+}
+
+// ── Win Popup (big win > 100 USDC) ────────────────────────────────────────────
+function WinPopup({ bet, market, onClose }) {
+  const gain = bet.payout && bet.amount ? (bet.payout - bet.amount).toFixed(2) : null;
+  const tweetText = `Je viens de gagner +$${gain} sur BETLY\n"${market?.title?.slice(0, 60)}"\n→ betly.gg/market/${market?._id}`;
+
+  useEffect(() => {
+    fireWin();
+    const t = setTimeout(onClose, 15000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 2000,
+        background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 400, textAlign: 'center',
+          background: '#111118',
+          border: '1px solid rgba(34,197,94,0.3)',
+          borderRadius: 20, overflow: 'hidden',
+          boxShadow: '0 0 60px rgba(34,197,94,0.15)',
+        }}
+      >
+        {/* Green header */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(34,197,94,0.2) 0%, rgba(16,185,129,0.1) 100%)',
+          padding: '28px 24px 20px',
+          borderBottom: '1px solid rgba(34,197,94,0.15)',
+        }}>
+          <div style={{ fontSize: 48, marginBottom: 8 }}>--</div>
+          <div style={{ fontSize: 24, fontWeight: 900, color: '#22c55e', marginBottom: 4 }}>
+            +${gain} USDC
+          </div>
+          <div style={{ fontSize: 13, color: '#86efac' }}>Pari gagné !</div>
+        </div>
+
+        {/* Market title */}
+        <div style={{ padding: '16px 24px 0' }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8 }}>Sur le marché</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e2e8', lineHeight: 1.4, marginBottom: 16 }}>
+            "{market?.title}"
+          </div>
+        </div>
+
+        {/* Share CTA */}
+        <div style={{ padding: '0 24px 24px' }}>
+          <a
+            href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block', padding: '13px 0', borderRadius: 10, marginBottom: 10,
+              background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+              color: '#fff', fontWeight: 800, fontSize: 15, textDecoration: 'none',
+            }}
+          >
+            Partager ma victoire
+          </a>
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%', padding: '10px 0', borderRadius: 10,
+              background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
+              color: '#64748b', fontSize: 13, cursor: 'pointer',
+            }}
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -627,6 +1009,9 @@ export default function MarketDetail({ marketId }) {
   const userId = useUserId();
   const isMobile = useIsMobile();
   const [betKey, setBetKey] = useState(0);
+  const [betFormOpen, setBetFormOpen] = useState(false);
+  const [winPopup, setWinPopup] = useState(null);
+  const prevStatus = useRef(null);
   const { data, loading, error, refetch } = useApi(`/api/markets/${marketId}`, { interval: 0 });
 
   // Refetch when bet placed
@@ -636,6 +1021,28 @@ export default function MarketDetail({ marketId }) {
   }, [refetch]);
 
   const market = data?.market || data;
+
+  // Detect market just resolved — check if user won > 100 USDC
+  useEffect(() => {
+    if (!market || !userId) return;
+    if (market.status === 'resolved' && prevStatus.current && prevStatus.current !== 'resolved') {
+      apiFetch(`/api/positions?status=won`)
+        .then(r => r.json())
+        .then(d => {
+          const wonBet = (d.bets || []).find(b =>
+            (b.marketId === marketId || b.marketId?._id === marketId) &&
+            b.payout > 100
+          );
+          if (wonBet) {
+            setWinPopup({ ...wonBet, marketTitle: market.title });
+            fireWin();
+          }
+        })
+        .catch(() => {});
+    }
+    prevStatus.current = market.status;
+  }, [market?.status]);
+
 
   const yes     = market ? Math.round(((market.totalYes || 0) / ((market.totalYes || 0) + (market.totalNo || 0) || 1)) * 100) : 50;
   const no      = 100 - yes;
@@ -696,14 +1103,14 @@ export default function MarketDetail({ marketId }) {
             color: cat.color, background: cat.bg,
           }}
         >
-          {cat.emoji} {catKey.charAt(0).toUpperCase() + catKey.slice(1)}
+          {catKey.charAt(0).toUpperCase() + catKey.slice(1)}
         </span>
         <span style={{ color: '#334155' }}>›</span>
         <span style={{ color: '#94a3b8' }}>Détail</span>
       </div>
 
       {/* Main layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 24, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '3fr 2fr', gap: 24, alignItems: 'start' }}>
 
         {/* ── LEFT COLUMN ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -720,7 +1127,7 @@ export default function MarketDetail({ marketId }) {
                 padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
                 color: cat.color, background: cat.bg,
               }}>
-                {cat.emoji} {catKey.toUpperCase()}
+                {catKey.toUpperCase()}
               </span>
               <span style={{
                 padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
@@ -728,7 +1135,7 @@ export default function MarketDetail({ marketId }) {
                 background: isEnded ? 'rgba(100,116,139,0.1)' : 'rgba(34,197,94,0.1)',
                 border: `1px solid ${isEnded ? 'rgba(100,116,139,0.2)' : 'rgba(34,197,94,0.25)'}`,
               }}>
-                {isEnded ? '✓ Terminé' : `⏱ ${tleft}`}
+                {isEnded ? 'Terminé' : tleft}
               </span>
               {aiAnalysis && <ConfidenceBadge score={aiAnalysis.confidenceScore} />}
               <span style={{ marginLeft: 'auto', fontSize: 12, color: '#64748b' }}>
@@ -765,8 +1172,9 @@ export default function MarketDetail({ marketId }) {
               <span style={{ fontSize: 11, color: '#475569' }}>
                 · créé le {new Date(market.createdAt).toLocaleDateString('fr-FR')}
               </span>
-              {/* Share */}
+              {/* Share + Report */}
               <ShareButton market={market} yes={yes} volume={(market.totalYes || 0) + (market.totalNo || 0)} />
+              <ReportButton marketId={marketId} />
             </div>
 
             {/* Description */}
@@ -783,11 +1191,7 @@ export default function MarketDetail({ marketId }) {
 
             {/* Chart */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 11, color: '#64748b' }}>Probabilité OUI · historique</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#a855f7' }}>{yes}%</span>
-              </div>
-              <ProbChart yesPct={yes} />
+              <PriceChartReal marketId={marketId} yesPct={yes} />
             </div>
 
             {/* Big bars */}
@@ -799,20 +1203,8 @@ export default function MarketDetail({ marketId }) {
             <AiAnalysis analysis={aiAnalysis} />
           )}
 
-          {/* Bet form */}
-          {!isEnded && (
-            <BetForm marketId={marketId} userId={userId} onBetPlaced={handleBetPlaced} />
-          )}
-          {isEnded && (
-            <div style={{
-              padding: '16px 20px', borderRadius: 12,
-              background: 'rgba(100,116,139,0.08)',
-              border: '1px solid rgba(100,116,139,0.2)',
-              color: '#64748b', fontSize: 14, textAlign: 'center',
-            }}>
-              Ce marché est terminé — les paris sont fermés
-            </div>
-          )}
+          {/* Spacer so content isn't hidden behind sticky form on mobile */}
+          {!isEnded && isMobile && <div className="bet-form-spacer" />}
 
           {/* Comments */}
           <div style={{
@@ -825,59 +1217,113 @@ export default function MarketDetail({ marketId }) {
         </div>
 
         {/* ── RIGHT COLUMN (sidebar) ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 80 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: isMobile ? 'static' : 'sticky', top: 80 }}>
+
+          {/* Bet form — top of sidebar on desktop */}
+          {!isEnded && !isMobile && (
+            <BetForm marketId={marketId} userId={userId} onBetPlaced={handleBetPlaced} market={market} />
+          )}
+          {isEnded && (
+            <div style={{
+              padding: '16px 20px', borderRadius: 12,
+              background: 'rgba(100,116,139,0.08)',
+              border: '1px solid rgba(100,116,139,0.2)',
+              color: '#64748b', fontSize: 14, textAlign: 'center',
+            }}>
+              Ce marché est terminé — les paris sont fermés
+            </div>
+          )}
 
           {/* Stats box */}
-          <div style={{
-            background: '#111118',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: 12, padding: 16,
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 12 }}>📊 Statistiques</div>
-            {[
-              { label: 'Volume total',   value: `${((market.totalYes || 0) + (market.totalNo || 0)).toFixed(2)} USDC` },
-              { label: 'Mise OUI',       value: `${(market.totalYes || 0).toFixed(2)} USDC` },
-              { label: 'Mise NON',       value: `${(market.totalNo  || 0).toFixed(2)} USDC` },
-              { label: 'Oracle Level',   value: `L${market.oracleLevel || 1}` },
-              { label: 'Statut',         value: market.status || 'active' },
-              { label: 'Date limite', value: (market.resolutionDate || market.deadline) ? new Date(market.resolutionDate || market.deadline).toLocaleDateString('fr-FR') : '—' },
-            ].map(({ label, value }) => (
-              <div key={label} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '7px 0',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
-              }}>
-                <span style={{ fontSize: 11, color: '#64748b' }}>{label}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{value}</span>
-              </div>
-            ))}
-
-            {/* Resolved result */}
-            {market.status === 'resolved' && (
-              <div style={{
-                marginTop: 12, padding: '10px 12px', borderRadius: 8,
-                background: market.outcome === 'YES' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                border: `1px solid ${market.outcome === 'YES' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Résultat final</div>
-                <div style={{
-                  fontSize: 18, fontWeight: 800,
-                  color: market.outcome === 'YES' ? '#22c55e' : '#ef4444',
-                }}>
-                  {market.outcome === 'YES' ? '✓ OUI' : '✗ NON'}
-                </div>
-              </div>
-            )}
-          </div>
+          {isMobile ? (
+            <Accordion title="Statistiques">
+              <StatsRows market={market} />
+            </Accordion>
+          ) : (
+            <div style={{
+              background: '#111118',
+              border: '1px solid rgba(255,255,255,0.07)',
+              borderRadius: 12, padding: 16,
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 12 }}>Statistiques</div>
+              <StatsRows market={market} />
+            </div>
+          )}
 
           {/* Community vote */}
-          {!isEnded && <CommunityVote marketId={marketId} userId={userId} />}
+          {!isEnded && (
+            isMobile ? (
+              <Accordion title="Vote communautaire">
+                <CommunityVote marketId={marketId} userId={userId} />
+              </Accordion>
+            ) : (
+              <CommunityVote marketId={marketId} userId={userId} />
+            )
+          )}
 
           {/* Activity feed */}
-          <ActivityFeed marketId={marketId} />
+          {isMobile ? (
+            <Accordion title="Activité récente">
+              <ActivityFeed marketId={marketId} compact />
+            </Accordion>
+          ) : (
+            <ActivityFeed marketId={marketId} />
+          )}
         </div>
       </div>
+
+      {/* Sticky bet form on mobile */}
+      {!isEnded && isMobile && (
+        <div className="bet-form-sticky">
+          <BetForm marketId={marketId} userId={userId} onBetPlaced={handleBetPlaced} market={market} />
+        </div>
+      )}
+
+      {/* Win popup — big win > 100 USDC */}
+      {winPopup && (
+        <WinPopup
+          bet={winPopup}
+          market={market}
+          onClose={() => setWinPopup(null)}
+        />
+      )}
     </div>
+  );
+}
+
+// ── Stats rows (reused by desktop card + mobile accordion) ────────────────────
+function StatsRows({ market }) {
+  return (
+    <>
+      {[
+        { label: 'Volume total', value: `${((market.totalYes || 0) + (market.totalNo || 0)).toFixed(2)} USDC` },
+        { label: 'Mise OUI',     value: `${(market.totalYes || 0).toFixed(2)} USDC` },
+        { label: 'Mise NON',     value: `${(market.totalNo  || 0).toFixed(2)} USDC` },
+        { label: 'Oracle Level', value: `L${market.oracleLevel || 1}` },
+        { label: 'Statut',       value: market.status || 'active' },
+        { label: 'Date limite',  value: (market.resolutionDate || market.deadline) ? new Date(market.resolutionDate || market.deadline).toLocaleDateString('fr-FR') : '—' },
+      ].map(({ label, value }) => (
+        <div key={label} style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '7px 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
+        }}>
+          <span style={{ fontSize: 11, color: '#64748b' }}>{label}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{value}</span>
+        </div>
+      ))}
+      {market.status === 'resolved' && (
+        <div style={{
+          marginTop: 12, padding: '10px 12px', borderRadius: 8,
+          background: market.outcome === 'YES' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+          border: `1px solid ${market.outcome === 'YES' ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}`,
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Résultat final</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: market.outcome === 'YES' ? '#22c55e' : '#ef4444' }}>
+            {market.outcome === 'YES' ? '✓ OUI' : '✗ NON'}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -3,16 +3,17 @@ import { useAuth } from '../hooks/useAuth';
 import { useIsMobile } from '../hooks/useIsMobile';
 import NotificationBell from './NotificationBell';
 import SearchModal from './SearchModal';
+import WalletButton from './WalletButton';
 import { toast } from './ToastManager';
 
 const LINKS = [
-  { label: '🎯 Marchés',     path: '/'            },
-  { label: '📈 BETLY Copy',  path: '/copy'         },
-  { label: '🏆 Leaderboard', path: '/leaderboard'  },
+  { label: 'Marchés',     path: '/'            },
+  { label: 'BETLY Copy',  path: '/copy'         },
+  { label: 'Leaderboard', path: '/leaderboard'  },
 ];
 
-export default function Topbar() {
-  const { user, logout } = useAuth();
+export default function Topbar({ walletDisabled = false }) {
+  const { user, logout, openAuth } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const currentPath = window.location.pathname;
@@ -68,7 +69,7 @@ export default function Topbar() {
         WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         backgroundClip: 'text', letterSpacing: '-0.5px', flexShrink: 0,
       }}>
-        BETLY
+        {isMobile ? 'B' : 'BETLY'}
       </a>
 
       {/* Nav — hidden on mobile (uses BottomNav instead) */}
@@ -106,7 +107,7 @@ export default function Topbar() {
         onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; e.currentTarget.style.color = '#a855f7'; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#64748b'; }}
       >
-        <span>🔍</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         {!isMobile && (
           <>
             <span>Rechercher</span>
@@ -120,19 +121,36 @@ export default function Topbar() {
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        {/* Wallet button — only when Dynamic SDK is available */}
+        {!isMobile && !walletDisabled && <WalletButton />}
+
         {user ? (
           <>
-            {/* Balance pill — desktop only */}
-            {!isMobile && (
-              <div style={{
-                padding: '4px 10px', borderRadius: 7,
-                background: 'rgba(124,58,237,0.1)',
-                border: '1px solid rgba(124,58,237,0.2)',
-                fontSize: 12, color: '#a78bfa', fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}>
-                {typeof user.balance === 'number' ? `${user.balance.toFixed(2)} USDC` : '—'}
-              </div>
+            {/* Balance pills — desktop only */}
+            {!isMobile && typeof user.balance === 'number' && (
+              <a href="/positions" style={{ display: 'flex', gap: 4, textDecoration: 'none' }}>
+                <div style={{
+                  padding: '4px 10px', borderRadius: '7px 0 0 7px',
+                  background: 'rgba(34,197,94,0.08)',
+                  border: '1px solid rgba(34,197,94,0.2)',
+                  borderRight: 'none',
+                  fontSize: 11, color: '#22c55e', fontWeight: 600,
+                  whiteSpace: 'nowrap',
+                }}>
+                  {(user.balance - (user.lockedBalance || 0)).toFixed(2)} USDC
+                </div>
+                {(user.lockedBalance || 0) > 0 && (
+                  <div style={{
+                    padding: '4px 10px', borderRadius: '0 7px 7px 0',
+                    background: 'rgba(245,158,11,0.08)',
+                    border: '1px solid rgba(245,158,11,0.2)',
+                    fontSize: 11, color: '#f59e0b', fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {(user.lockedBalance || 0).toFixed(2)} en jeu
+                  </div>
+                )}
+              </a>
             )}
 
             {/* Notification bell */}
@@ -143,27 +161,36 @@ export default function Topbar() {
               <button
                 onClick={() => setMenuOpen(v => !v)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '4px 10px 4px 4px',
+                  display: 'flex', alignItems: 'center', gap: isMobile ? 0 : 8,
+                  padding: isMobile ? '4px' : '4px 10px 4px 4px',
                   background: menuOpen ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.05)',
                   border: `1px solid ${menuOpen ? 'rgba(124,58,237,0.35)' : 'rgba(255,255,255,0.08)'}`,
                   borderRadius: 8, cursor: 'pointer', transition: 'all .15s',
+                  minWidth: 36, minHeight: 36,
                 }}
               >
-                <div style={{
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: user.avatarColor || '#7c3aed',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 800, color: '#fff',
-                }}>
-                  {(user.username || '?').slice(0, 1).toUpperCase()}
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>
-                  {user.username}
-                </span>
-                <span style={{ fontSize: 9, color: '#64748b', marginLeft: 2 }}>
-                  {menuOpen ? '▲' : '▼'}
-                </span>
+                {user.googlePhotoUrl ? (
+                  <img src={user.googlePhotoUrl} alt="" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{
+                    width: 26, height: 26, borderRadius: '50%',
+                    background: user.avatarColor || '#7c3aed',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 800, color: '#fff',
+                  }}>
+                    {(user.username || '?').slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                {!isMobile && (
+                  <>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>
+                      {user.username}
+                    </span>
+                    <span style={{ fontSize: 9, color: '#64748b', marginLeft: 2 }}>
+                      {menuOpen ? '▲' : '▼'}
+                    </span>
+                  </>
+                )}
               </button>
 
               {/* Dropdown */}
@@ -185,14 +212,18 @@ export default function Topbar() {
                     borderBottom: '1px solid rgba(255,255,255,0.06)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 36, height: 36, borderRadius: '50%',
-                        background: user.avatarColor || '#7c3aed',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 15, fontWeight: 800, color: '#fff',
-                      }}>
-                        {(user.username || '?').slice(0, 1).toUpperCase()}
-                      </div>
+                      {user.googlePhotoUrl ? (
+                        <img src={user.googlePhotoUrl} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%',
+                          background: user.avatarColor || '#7c3aed',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 15, fontWeight: 800, color: '#fff',
+                        }}>
+                          {(user.username || '?').slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
                           {user.username}
@@ -206,9 +237,10 @@ export default function Topbar() {
 
                   {/* Menu items */}
                   {[
-                    { label: '👤 Mon profil', action: () => { window.location.href = `/profile/${user.userId}`; setMenuOpen(false); } },
-                    { label: '⚙️ Mon compte', action: () => { window.location.href = '/account'; setMenuOpen(false); } },
-                    { label: '🎯 Créer un marché', action: () => { window.location.href = '/create'; setMenuOpen(false); } },
+                    { label: 'Mon profil',      action: () => { window.location.href = `/profile/${user.userId}`; setMenuOpen(false); } },
+                    { label: 'Mon compte',      action: () => { window.location.href = '/account'; setMenuOpen(false); } },
+                    { label: 'Mes positions',   action: () => { window.location.href = '/positions'; setMenuOpen(false); } },
+                    { label: 'Créer un marché', action: () => { window.location.href = '/create'; setMenuOpen(false); } },
                   ].map(({ label, action }) => (
                     <button
                       key={label}
@@ -238,7 +270,7 @@ export default function Topbar() {
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'none'}
                   >
-                    🚪 Se déconnecter
+                    Se déconnecter
                   </button>
                 </div>
               )}
@@ -246,7 +278,7 @@ export default function Topbar() {
           </>
         ) : (
           <button
-            onClick={() => window.location.reload()}
+            onClick={openAuth}
             style={{
               padding: '7px 16px', borderRadius: 8,
               background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
@@ -254,7 +286,7 @@ export default function Topbar() {
               fontSize: 13, fontWeight: 700,
             }}
           >
-            Rejoindre
+            Se connecter
           </button>
         )}
       </div>
