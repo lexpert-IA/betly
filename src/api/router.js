@@ -13,6 +13,7 @@ const Referral = require('../../db/models/Referral');
 const CreatorCommission = require('../../db/models/CreatorCommission');
 const CreatorVerification = require('../../db/models/CreatorVerification');
 const KnownCreator = require('../../db/models/KnownCreator');
+const Post = require('../../db/models/Post');
 const { analyzeMarket } = require('../agents/moderator');
 const { checkForFraud } = require('../agents/watcher');
 const { computeTrendingScores } = require('../agents/trending');
@@ -613,26 +614,31 @@ router.get('/markets/personalized', async (req, res) => {
     }
 
     // 1. Who does this user follow?
-    const followedUsers = await User.find({ followedBy: userId }).select('_id telegramId').lean();
+    const followedUsers = await User.find({ followedBy: userId }).select('_id telegramId').lean().catch(() => []);
     const creatorIds = followedUsers.flatMap(u => [u._id.toString(), u.telegramId].filter(Boolean));
 
     // 2. User's top categories based on bet history
-    const betsByCategory = await Bet.aggregate([
-      { $match: { userId } },
-      {
-        $lookup: {
-          from: 'markets',
-          localField: 'marketId',
-          foreignField: '_id',
-          as: 'market',
+    let topCategories = [];
+    try {
+      const betsByCategory = await Bet.aggregate([
+        { $match: { userId } },
+        {
+          $lookup: {
+            from: 'markets',
+            localField: 'marketId',
+            foreignField: '_id',
+            as: 'market',
+          },
         },
-      },
-      { $unwind: { path: '$market', preserveNullAndEmpty: false } },
-      { $group: { _id: '$market.category', count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 2 },
-    ]);
-    const topCategories = betsByCategory.map(b => b._id).filter(Boolean);
+        { $unwind: { path: '$market', preserveNullAndEmptyArrays: false } },
+        { $group: { _id: '$market.category', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 2 },
+      ]);
+      topCategories = betsByCategory.map(b => b._id).filter(Boolean);
+    } catch (aggErr) {
+      logger.warn(`personalized: aggregate error — ${aggErr.message}`);
+    }
 
     // 3. Fetch markets in parallel
     const [followedMarkets, categoryMarkets] = await Promise.all([
@@ -3715,5 +3721,484 @@ router.post('/markets/:id/set-onchain', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARTIE — POSTS (Social feed — expression, no discussion)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/posts ──────────────────────────────────────────────────────────
+router.get('/posts', async (req, res) => {
+  try {
+    const { sort = 'recent', limit = 20, before } = req.query;
+    const query = {};
+    if (before) query.createdAt = { $lt: new Date(before) };
+
+    const sortOpt = sort === 'top'
+      ? { starCount: -1, likeCount: -1, createdAt: -1 }
+      : { createdAt: -1 };
+
+    const posts = await Post.find(query)
+      .sort(sortOpt)
+      .limit(Math.min(parseInt(limit) || 20, 50))
+      .populate('marketId', 'title question totalYes totalNo status _id')
+      .lean();
+
+    res.json({ posts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/posts ─────────────────────────────────────────────────────────
+router.post('/posts', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+    const user = req.dbUser;
+
+    const { text, marketId } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ error: 'Texte requis' });
+    if (text.length > 500) return res.status(400).json({ error: 'Max 500 caractères' });
+
+    const postData = {
+      userId: user.uniqueId || user.visitorId || user._id.toString(),
+      username: user.username || 'anon',
+      displayName: user.displayName || user.username,
+      avatarColor: user.avatarColor || '#7c3aed',
+      googlePhotoUrl: user.googlePhotoUrl || null,
+      verified: user.level === 'oracle' || user.level === 'legende',
+      text: text.trim(),
+    };
+
+    if (marketId) {
+      const market = await Market.findById(marketId).select('_id').lean();
+      if (market) postData.marketId = market._id;
+    }
+
+    const post = await Post.create(postData);
+    res.status(201).json({ post });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/posts/:id/react ───────────────────────────────────────────────
+// body: { type: 'like' | 'dislike' | 'star' }
+router.post('/posts/:id/react', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+    const userId = req.dbUser.uniqueId || req.dbUser.visitorId || req.dbUser._id.toString();
+    const { type } = req.body;
+
+    if (!['like', 'dislike', 'star'].includes(type)) {
+      return res.status(400).json({ error: 'Type invalide' });
+    }
+
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post introuvable' });
+
+    const field = type === 'like' ? 'likes' : type === 'dislike' ? 'dislikes' : 'stars';
+    const countField = type === 'like' ? 'likeCount' : type === 'dislike' ? 'dislikeCount' : 'starCount';
+    const alreadyReacted = post[field].includes(userId);
+
+    if (alreadyReacted) {
+      // Toggle off
+      post[field] = post[field].filter(id => id !== userId);
+      post[countField] = Math.max(0, (post[countField] || 0) - 1);
+    } else {
+      // Toggle on — remove opposite reaction if like/dislike
+      if (type === 'like' && post.dislikes.includes(userId)) {
+        post.dislikes = post.dislikes.filter(id => id !== userId);
+        post.dislikeCount = Math.max(0, (post.dislikeCount || 0) - 1);
+      } else if (type === 'dislike' && post.likes.includes(userId)) {
+        post.likes = post.likes.filter(id => id !== userId);
+        post.likeCount = Math.max(0, (post.likeCount || 0) - 1);
+      }
+      post[field].push(userId);
+      post[countField] = (post[countField] || 0) + 1;
+    }
+
+    await post.save();
+    res.json({
+      likeCount: post.likeCount,
+      dislikeCount: post.dislikeCount,
+      starCount: post.starCount,
+      userLiked: post.likes.includes(userId),
+      userDisliked: post.dislikes.includes(userId),
+      userStarred: post.stars.includes(userId),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/posts/bot — Bot API (API key auth, no Firebase) ───────────────
+router.post('/posts/bot', async (req, res) => {
+  try {
+    const apiKey = req.headers['x-bot-key'] || req.query.key;
+    if (!apiKey || apiKey !== process.env.BOT_POST_KEY) {
+      return res.status(403).json({ error: 'Invalid bot key' });
+    }
+
+    const { text, username, displayName, avatarColor, marketId, verified } = req.body;
+    if (!text || !username) return res.status(400).json({ error: 'text + username required' });
+
+    const postData = {
+      userId: `bot:${username}`,
+      username,
+      displayName: displayName || username,
+      avatarColor: avatarColor || '#7c3aed',
+      googlePhotoUrl: null,
+      verified: verified || false,
+      text: text.slice(0, 500),
+    };
+
+    if (marketId) {
+      const market = await Market.findById(marketId).select('_id').lean();
+      if (market) postData.marketId = market._id;
+    }
+
+    const post = await Post.create(postData);
+    res.status(201).json({ post });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/posts/public — Read-only, no auth required ────────────────────
+router.get('/posts/public', async (req, res) => {
+  try {
+    const { limit = 20, before } = req.query;
+    const query = {};
+    if (before) query.createdAt = { $lt: new Date(before) };
+
+    const posts = await Post.find(query)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(parseInt(limit) || 20, 50))
+      .select('-likes -dislikes -stars')
+      .populate('marketId', 'title question totalYes totalNo status _id')
+      .lean();
+
+    res.json({ posts });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE /api/posts/:id ───────────────────────────────────────────────────
+router.delete('/posts/:id', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+    const userId = req.dbUser.uniqueId || req.dbUser.visitorId || req.dbUser._id.toString();
+
+    const post = await Post.findById(req.params.id);
+    if (!post) return res.status(404).json({ error: 'Post introuvable' });
+    if (post.userId !== userId) return res.status(403).json({ error: 'Non autorisé' });
+
+    await post.deleteOne();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── COPY TRADE — /api/copy/* ─────────────────────────────────── Sonnet 4.6 ──
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CopyConfig = require('../../db/models/CopyConfig');
+const CopyTrade  = require('../../db/models/CopyTrade');
+const axios      = require('axios');
+
+const POLYFRENCH_URL = process.env.POLYFRENCH_API_URL || 'http://localhost:3000';
+const COPY_FEE_PCT   = 0.005; // 0.5%
+
+// Helper — récupère ou crée la config copy d'un user
+async function getCopyConfig(userId) {
+  let cfg = await CopyConfig.findOne({ userId });
+  if (!cfg) cfg = await CopyConfig.create({ userId });
+  return cfg;
+}
+
+// Helper — reset dailyLoss si nouveau jour
+function checkDailyReset(cfg) {
+  if (!cfg.dailyLossResetAt) return;
+  const now   = new Date();
+  const reset = new Date(cfg.dailyLossResetAt);
+  if (now.toDateString() !== reset.toDateString()) {
+    cfg.dailyLoss        = 0;
+    cfg.dailyLossResetAt = now;
+  }
+}
+
+// ─── GET /api/copy/leaderboard ────────────────────────────────────────────────
+// Proxy vers Polyfrench API — retourne les top whales avec BETLY Score
+router.get('/copy/leaderboard', async (req, res) => {
+  try {
+    const limit  = Math.min(parseInt(req.query.limit || '20', 10), 50);
+    const sortBy = req.query.sort || 'score'; // score | winrate | roi
+
+    const { data } = await axios.get(`${POLYFRENCH_URL}/api/leaderboard`, {
+      params: { limit, sort: sortBy },
+      timeout: 6000,
+    });
+
+    // Calcul BETLY Score côté backend pour uniformité
+    const wallets = (data?.leaderboard || data || []).map((w, i) => {
+      const wr  = Math.min(w.winRate    || 0, 100);
+      const roi = Math.min((w.roi       || 0) / 300 * 100, 100);
+      const exp = Math.min((w.totalTrades || 0) / 150 * 100, 100);
+      const betlyScore = Math.round(wr * 0.45 + roi * 0.35 + exp * 0.20);
+      return { ...w, betlyScore, _rank: i + 1 };
+    });
+
+    res.json({ wallets, source: 'polyfrench' });
+  } catch (err) {
+    logger.warn(`[COPY] Leaderboard proxy failed: ${err.message}`);
+    res.json({ wallets: [], source: 'unavailable', error: 'Polyfrench API hors ligne' });
+  }
+});
+
+// ─── GET /api/copy/alerts ─────────────────────────────────────────────────────
+// Trades récents détectés sur les whales — proxy Polyfrench
+router.get('/copy/alerts', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || '30', 10), 100);
+    const { data } = await axios.get(`${POLYFRENCH_URL}/api/alerts`, {
+      params: { limit },
+      timeout: 5000,
+    });
+    const alerts = data?.alerts || data?.recent || data || [];
+    res.json({ alerts });
+  } catch (err) {
+    logger.warn(`[COPY] Alerts proxy failed: ${err.message}`);
+    res.json({ alerts: [] });
+  }
+});
+
+// ─── GET /api/copy/config ─────────────────────────────────────────────────────
+router.get('/copy/config', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+    const cfg = await getCopyConfig(req.dbUser._id);
+    res.json({ config: cfg });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/copy/follow ────────────────────────────────────────────────────
+router.post('/copy/follow', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const { address, allocation = 5, nickname = '' } = req.body;
+    if (!address) return res.status(400).json({ error: 'address requis' });
+    if (allocation < 1 || allocation > 50) return res.status(400).json({ error: 'allocation 1–50%' });
+
+    const cfg = await getCopyConfig(req.dbUser._id);
+
+    const existing = cfg.followedWallets.find(w => w.address === address);
+    if (existing) {
+      existing.allocation = allocation;
+      existing.active     = true;
+      existing.nickname   = nickname || existing.nickname;
+    } else {
+      if (cfg.followedWallets.length >= 10) {
+        return res.status(400).json({ error: 'Maximum 10 wallets suivis' });
+      }
+      cfg.followedWallets.push({ address, allocation, active: true, nickname, copiedAt: new Date() });
+    }
+
+    cfg.updatedAt = new Date();
+    await cfg.save();
+    logger.info(`[COPY] User ${req.dbUser._id} follows ${address} @ ${allocation}%`);
+    res.json({ ok: true, config: cfg });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/copy/unfollow ──────────────────────────────────────────────────
+router.post('/copy/unfollow', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const { address } = req.body;
+    if (!address) return res.status(400).json({ error: 'address requis' });
+
+    const cfg = await getCopyConfig(req.dbUser._id);
+    cfg.followedWallets = cfg.followedWallets.filter(w => w.address !== address);
+    cfg.updatedAt = new Date();
+    await cfg.save();
+
+    logger.info(`[COPY] User ${req.dbUser._id} unfollows ${address}`);
+    res.json({ ok: true, config: cfg });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── PATCH /api/copy/settings ─────────────────────────────────────────────────
+router.patch('/copy/settings', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const cfg = await getCopyConfig(req.dbUser._id);
+    const allowed = ['copyEnabled', 'mode', 'paperMode', 'maxPerTrade', 'dailyLossLimit'];
+
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) cfg[key] = req.body[key];
+    }
+    cfg.updatedAt = new Date();
+    await cfg.save();
+
+    logger.info(`[COPY] Settings updated for user ${req.dbUser._id}: ${JSON.stringify(req.body)}`);
+    res.json({ ok: true, config: cfg });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/copy/trades ─────────────────────────────────────────────────────
+router.get('/copy/trades', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const limit  = Math.min(parseInt(req.query.limit || '20', 10), 100);
+    const status = req.query.status; // filtre optionnel
+
+    const query = { userId: req.dbUser._id };
+    if (status) query.status = status;
+
+    const trades = await CopyTrade.find(query)
+      .sort({ executedAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const totalPnl  = trades.filter(t => t.pnl !== null).reduce((s, t) => s + t.pnl, 0);
+    const executed  = trades.filter(t => t.status === 'executed').length;
+    const paper     = trades.filter(t => t.status === 'paper').length;
+
+    res.json({ trades, stats: { totalPnl, executed, paper, total: trades.length } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/copy/execute ───────────────────────────────────────────────────
+// Enregistre + exécute un copy trade depuis l'interface web
+router.post('/copy/execute', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const user = req.dbUser;
+    const cfg  = await getCopyConfig(user._id);
+
+    if (!cfg.copyEnabled) {
+      return res.status(400).json({ error: 'Copy trading désactivé — active-le dans les paramètres' });
+    }
+
+    const { whaleAddress, marketId, marketTitle, outcome, amount, price } = req.body;
+    if (!whaleAddress || !outcome || !amount) {
+      return res.status(400).json({ error: 'whaleAddress, outcome, amount requis' });
+    }
+
+    // Check wallet suivi
+    const followed = cfg.followedWallets.find(w => w.address === whaleAddress && w.active);
+    if (!followed) return res.status(400).json({ error: 'Wallet non suivi ou inactif' });
+
+    // Risk checks
+    checkDailyReset(cfg);
+    const effectiveAmount = Math.min(amount, cfg.maxPerTrade);
+    if (cfg.dailyLoss >= cfg.dailyLossLimit) {
+      return res.status(400).json({ error: `Stop-loss journalier atteint (${cfg.dailyLossLimit} USDC)` });
+    }
+
+    const available = Math.max(0, (user.balance || 0) - (user.lockedBalance || 0));
+    if (effectiveAmount > available && !cfg.paperMode) {
+      return res.status(400).json({ error: `Solde insuffisant : ${available.toFixed(2)} USDC disponibles` });
+    }
+
+    const fee = Math.round(effectiveAmount * COPY_FEE_PCT * 100) / 100;
+
+    // Paper mode — simulation sans exécution réelle
+    if (cfg.paperMode) {
+      const ct = await CopyTrade.create({
+        userId: user._id, whaleAddress, marketId, marketTitle, outcome, price,
+        amount: effectiveAmount, fee: 0, status: 'paper', mode: cfg.mode,
+      });
+      logger.info(`[COPY][PAPER] User ${user._id} copy ${whaleAddress} ${outcome} ${effectiveAmount} USDC`);
+      return res.json({ ok: true, trade: ct, paper: true });
+    }
+
+    // Mode réel — débit du solde Betly + enregistrement
+    user.balance     = Math.round(((user.balance || 0) - effectiveAmount) * 1e6) / 1e6;
+    user.lockedBalance = Math.round(((user.lockedBalance || 0) + effectiveAmount) * 1e6) / 1e6;
+    await user.save();
+
+    cfg.dailyLoss    = Math.round(((cfg.dailyLoss || 0) + effectiveAmount) * 100) / 100;
+    cfg.totalCopied  = Math.round(((cfg.totalCopied || 0) + effectiveAmount) * 100) / 100;
+    cfg.dailyLossResetAt = cfg.dailyLossResetAt || new Date();
+    cfg.updatedAt    = new Date();
+    await cfg.save();
+
+    await PlatformRevenue.create({
+      type: 'copy_fee', amount: fee, userId: user._id,
+      meta: { whaleAddress, marketTitle, outcome },
+    });
+    logger.info(`[COPY][FEE] +${fee} USDC | user: ${user._id}`);
+
+    const ct = await CopyTrade.create({
+      userId: user._id, whaleAddress, marketId, marketTitle, outcome, price,
+      amount: effectiveAmount, fee, status: 'executed', mode: cfg.mode,
+    });
+
+    logger.info(`[COPY] Executed: user ${user._id} | ${whaleAddress} | ${outcome} | ${effectiveAmount} USDC`);
+    res.json({ ok: true, trade: ct });
+  } catch (err) {
+    logger.error(`[COPY] execute error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/copy/stats ──────────────────────────────────────────────────────
+// Stats globales agrégées (dashboard header)
+router.get('/copy/stats', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Non authentifié' });
+
+    const cfg = await getCopyConfig(req.dbUser._id);
+    const trades = await CopyTrade.find({ userId: req.dbUser._id }).lean();
+
+    const executed = trades.filter(t => t.status === 'executed');
+    const paper    = trades.filter(t => t.status === 'paper');
+    const withPnl  = trades.filter(t => t.pnl !== null);
+    const totalPnl = withPnl.reduce((s, t) => s + t.pnl, 0);
+    const winners  = withPnl.filter(t => t.pnl > 0).length;
+    const winRate  = withPnl.length ? Math.round((winners / withPnl.length) * 100) : 0;
+
+    res.json({
+      copyEnabled:     cfg.copyEnabled,
+      mode:            cfg.mode,
+      paperMode:       cfg.paperMode,
+      maxPerTrade:     cfg.maxPerTrade,
+      dailyLossLimit:  cfg.dailyLossLimit,
+      dailyLoss:       cfg.dailyLoss,
+      totalCopied:     cfg.totalCopied,
+      followedCount:   cfg.followedWallets.filter(w => w.active).length,
+      totalTrades:     trades.length,
+      executedTrades:  executed.length,
+      paperTrades:     paper.length,
+      totalPnl:        Math.round(totalPnl * 100) / 100,
+      winRate,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── FIN COPY TRADE ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
 
 module.exports = router;

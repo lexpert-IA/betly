@@ -22,7 +22,7 @@ export function useApi(path, { interval = 0, params = {} } = {}) {
   const timerRef              = useRef(null);
 
   const fetch_ = useCallback(async (isFirstLoad = false) => {
-    if (!path) return;
+    if (!path) { setLoading(false); return; }
     if (isFirstLoad) setLoading(true);
     try {
       const authHeader = await getAuthHeader();
