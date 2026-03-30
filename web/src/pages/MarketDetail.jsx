@@ -12,6 +12,8 @@ import ShareModal from '../components/ShareModal';
 import { apiFetch } from '../lib/api';
 import { fireWin } from '../utils/confetti';
 import { usePlaceBet } from '../hooks/usePlaceBet';
+import { useClaimWinnings } from '../hooks/useClaimWinnings';
+import { useMarketOnChain } from '../hooks/useMarketOnChain';
 import { useAccount } from 'wagmi';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
@@ -295,6 +297,7 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
   const [quote, setQuote]     = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [needConfirm, setNeedConfirm]   = useState(false);
+  const [showOnChainConfirm, setShowOnChainConfirm] = useState(false);
   const [shareBet, setShareBet]         = useState(null);
   const quoteTimer = useRef(null);
 
@@ -341,11 +344,24 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
     if (onChain && placeBetOnChain) {
       console.log('[BET DEBUG] on-chain path — walletConnected:', walletConnected, 'walletAddress:', walletAddress);
       if (!walletConnected) { setMsg({ type: 'err', text: 'Connecte ton wallet MetaMask pour parier on-chain' }); setShowAuthFlow(true); return; }
+      // Show confirmation dialog before executing
+      if (!showOnChainConfirm) { setShowOnChainConfirm(true); return; }
+      setShowOnChainConfirm(false);
       setLoading(true); setMsg(null);
       try {
         console.log('[BET DEBUG] calling placeBetOnChain —', { marketId: market.onChainId, side, amt });
         const txHash = await placeBetOnChain(market.onChainId, side, amt);
         const sideLabel = side === 'YES' ? 'Oui' : 'Non';
+        // Record on-chain bet in DB so positions page can show it
+        try {
+          await apiFetch(`/api/markets/${marketId}/bet-onchain`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ side, amount: amt, txHash, walletAddress }),
+          });
+        } catch (dbErr) {
+          console.warn('[BET] DB record failed (bet is still on-chain):', dbErr.message);
+        }
         setMsg({ type: 'ok', text: `Pari on-chain placé : $${amt} sur ${sideLabel}`, link: '/positions', txHash });
         toast(`$${amt} sur ${sideLabel} — tx confirmée !`, 'success', 5000);
         fireWin();
@@ -432,6 +448,90 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
         onClose={() => setShareBet(null)}
       />
     )}
+
+    {/* ── On-chain confirmation dialog ── */}
+    {showOnChainConfirm && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }} onClick={() => setShowOnChainConfirm(false)}>
+        <div onClick={e => e.stopPropagation()} style={{
+          background: '#111118', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 16, padding: '28px 24px', maxWidth: 380, width: '90%',
+          boxShadow: '0 20px 60px rgba(0,0,0,.6)',
+        }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#f8fafc', marginBottom: 20, textAlign: 'center' }}>
+            Confirmer ton pari
+          </div>
+
+          {/* Side indicator — big and unmissable */}
+          <div style={{
+            padding: '16px 20px', borderRadius: 12, marginBottom: 16, textAlign: 'center',
+            background: side === 'YES' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+            border: `2px solid ${side === 'YES' ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'}`,
+          }}>
+            <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6, fontWeight: 500 }}>Tu paries sur</div>
+            <div style={{
+              fontSize: 28, fontWeight: 900,
+              color: side === 'YES' ? '#22c55e' : '#ef4444',
+            }}>
+              {side === 'YES' ? 'OUI' : 'NON'}
+            </div>
+          </div>
+
+          {/* Market title */}
+          <div style={{
+            padding: '12px 14px', borderRadius: 10, marginBottom: 16,
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          }}>
+            <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Marché</div>
+            <div style={{ fontSize: 13, color: '#e2e2e8', fontWeight: 600 }}>{market?.title}</div>
+          </div>
+
+          {/* Amount */}
+          <div style={{
+            padding: '12px 14px', borderRadius: 10, marginBottom: 20,
+            background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>Montant</span>
+            <span style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>${parseFloat(amount).toFixed(2)} USDC</span>
+          </div>
+
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => setShowOnChainConfirm(false)}
+              style={{
+                flex: 1, padding: '13px 0', borderRadius: 10,
+                background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                color: '#94a3b8', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              onClick={place}
+              style={{
+                flex: 1, padding: '13px 0', borderRadius: 10, border: 'none',
+                background: side === 'YES'
+                  ? 'linear-gradient(135deg,#15803d,#22c55e)'
+                  : 'linear-gradient(135deg,#b91c1c,#ef4444)',
+                color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+              }}
+            >
+              Confirmer
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, fontSize: 11, color: '#64748b', textAlign: 'center' }}>
+            USDC sera prélevé de ton wallet via le smart contract
+          </div>
+        </div>
+      </div>
+    )}
+
     <div style={{ background: '#0f0f1a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden' }}>
       {/* On-chain badge */}
       {onChain && (
@@ -446,21 +546,25 @@ function BetForm({ marketId, userId, onBetPlaced, market }) {
         </div>
       )}
 
-      {/* Side tabs — Polymarket style */}
+      {/* Side tabs — large, unmissable */}
       <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         {['YES', 'NO'].map(s => {
           const active = side === s;
           const isYes = s === 'YES';
+          const activeColor = isYes ? '#22c55e' : '#ef4444';
           return (
-            <button key={s} onClick={() => { setSide(s); setNeedConfirm(false); }} style={{
-              flex: 1, padding: '14px 0', cursor: 'pointer',
-              fontWeight: 700, fontSize: 14, letterSpacing: '0.02em',
+            <button key={s} onClick={() => { setSide(s); setNeedConfirm(false); setShowOnChainConfirm(false); }} style={{
+              flex: 1, padding: '16px 0', cursor: 'pointer',
+              fontWeight: 800, fontSize: 16, letterSpacing: '0.03em',
               border: 'none', transition: 'all .15s',
-              borderBottom: active ? `2px solid ${isYes ? '#22c55e' : '#ef4444'}` : '2px solid transparent',
-              background: active ? (isYes ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)') : 'transparent',
-              color: active ? (isYes ? '#22c55e' : '#ef4444') : '#64748b',
+              borderBottom: active ? `3px solid ${activeColor}` : '3px solid transparent',
+              background: active ? (isYes ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)') : 'transparent',
+              color: active ? activeColor : '#4a4a5a',
+              textTransform: 'uppercase',
             }}>
-              {isYes ? 'Oui' : 'Non'} {quote ? `${(quote.currentOdds * 100).toFixed(0)}¢` : ''}
+              {active && (isYes ? '\u2713 ' : '\u2717 ')}
+              {isYes ? 'Oui' : 'Non'}
+              {quote ? ` ${(quote.currentOdds * 100).toFixed(0)}¢` : ''}
             </button>
           );
         })}
@@ -1019,6 +1123,97 @@ function WinPopup({ bet, market, onClose }) {
 }
 
 // ── Main MarketDetail ─────────────────────────────────────────────────────────
+// ── My Position + Claim ──────────────────────────────────────────────────────
+function MyPosition({ marketId, market, onClaimed }) {
+  const userId = useUserId();
+  const { isConnected } = useAccount();
+  const { claim, status: claimStatus, error: claimError } = useClaimWinnings();
+  const [bets, setBets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) { setLoading(false); return; }
+    apiFetch(`/api/positions?status=all`)
+      .then(r => r.json())
+      .then(d => {
+        const mine = (d.positions || []).filter(p => p.market?._id === marketId);
+        setBets(mine.map(p => p.bet));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId, marketId]);
+
+  if (loading || bets.length === 0) return null;
+
+  const totalStaked = bets.reduce((s, b) => s + b.amount, 0);
+  const isResolved = market?.status === 'resolved';
+  const hasOnChain = market?.onChainId != null;
+  const wonBets = bets.filter(b => b.status === 'won');
+  const canClaim = isResolved && hasOnChain && wonBets.length > 0 && isConnected;
+
+  return (
+    <div style={{
+      background: '#111118',
+      border: '1px solid rgba(168,85,247,0.25)',
+      borderRadius: 12, padding: 16,
+    }}>
+      <div style={{ fontSize: 12, fontWeight: 700, color: '#a855f7', marginBottom: 12 }}>Ma position</div>
+      {bets.map(bet => (
+        <div key={bet._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{
+              padding: '2px 8px', borderRadius: 999, fontSize: 10, fontWeight: 800,
+              background: bet.side === 'YES' ? 'rgba(168,85,247,0.2)' : 'rgba(239,68,68,0.2)',
+              color: bet.side === 'YES' ? '#a855f7' : '#ef4444',
+            }}>
+              {bet.side === 'YES' ? 'OUI' : 'NON'}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>{bet.amount} USDC</span>
+          </div>
+          <span style={{
+            padding: '2px 7px', borderRadius: 999, fontSize: 10, fontWeight: 700,
+            background: bet.status === 'won' ? 'rgba(168,85,247,0.15)' : bet.status === 'lost' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+            color: bet.status === 'won' ? '#a855f7' : bet.status === 'lost' ? '#ef4444' : '#22c55e',
+          }}>
+            {bet.status === 'won' ? 'Gagné' : bet.status === 'lost' ? 'Perdu' : bet.status === 'claimed' ? 'Encaissé' : 'Actif'}
+          </span>
+        </div>
+      ))}
+      <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>
+        Total misé : {totalStaked} USDC
+      </div>
+      {wonBets.length > 0 && wonBets[0].payout > 0 && (
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e', marginTop: 8 }}>
+          Gain : +{(wonBets.reduce((s, b) => s + (b.payout || 0), 0) - wonBets.reduce((s, b) => s + b.amount, 0)).toFixed(2)} USDC
+        </div>
+      )}
+      {canClaim && (
+        <button
+          onClick={async () => {
+            try {
+              await claim(market.onChainId);
+              for (const b of wonBets) {
+                try { await apiFetch(`/api/bets/${b._id}/claim`, { method: 'POST' }); } catch {}
+              }
+              onClaimed?.();
+            } catch {}
+          }}
+          disabled={claimStatus === 'claiming'}
+          style={{
+            marginTop: 12, width: '100%', padding: '10px 0', borderRadius: 10,
+            border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14,
+            background: claimStatus === 'success' ? 'rgba(34,197,94,0.2)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            color: '#fff', opacity: claimStatus === 'claiming' ? 0.6 : 1,
+          }}
+        >
+          {claimStatus === 'claiming' ? 'Encaissement…' : claimStatus === 'success' ? 'Encaissé ✓' : 'Encaisser mes gains'}
+        </button>
+      )}
+      {claimError && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{claimError}</div>}
+    </div>
+  );
+}
+
 export default function MarketDetail({ marketId }) {
   const userId = useUserId();
   const isMobile = useIsMobile();
@@ -1240,13 +1435,27 @@ export default function MarketDetail({ marketId }) {
           {isEnded && (
             <div style={{
               padding: '16px 20px', borderRadius: 12,
-              background: 'rgba(100,116,139,0.08)',
-              border: '1px solid rgba(100,116,139,0.2)',
-              color: '#64748b', fontSize: 14, textAlign: 'center',
+              background: market?.outcome
+                ? market.outcome === 'YES'
+                  ? 'rgba(168,85,247,0.08)' : 'rgba(239,68,68,0.08)'
+                : 'rgba(100,116,139,0.08)',
+              border: `1px solid ${market?.outcome
+                ? market.outcome === 'YES'
+                  ? 'rgba(168,85,247,0.25)' : 'rgba(239,68,68,0.25)'
+                : 'rgba(100,116,139,0.2)'}`,
+              color: market?.outcome
+                ? market.outcome === 'YES' ? '#a855f7' : '#ef4444'
+                : '#64748b',
+              fontSize: 14, textAlign: 'center', fontWeight: 700,
             }}>
-              Ce marché est terminé — les paris sont fermés
+              {market?.outcome
+                ? `Résultat : ${market.outcome === 'YES' ? 'OUI' : 'NON'}`
+                : 'Ce marché est terminé — les paris sont fermés'}
             </div>
           )}
+
+          {/* My position + claim */}
+          {userId && <MyPosition marketId={marketId} market={market} onClaimed={refetch} />}
 
           {/* Stats box */}
           {isMobile ? (

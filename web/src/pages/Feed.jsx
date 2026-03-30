@@ -1,177 +1,211 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
+import { useAuth } from '../hooks/useAuth';
+import { useIsMobile } from '../hooks/useIsMobile';
 import MarketCard from '../components/MarketCard';
+import {
+  Flame, Star, Clock, Globe, Trophy, TrendingUp,
+  Plus, Inbox, Lightbulb, ChevronRight,
+} from 'lucide-react';
 
-const CATEGORIES = ['tous', 'sport', 'crypto', 'politique', 'culture', 'autre'];
+const CATEGORIES = ['tous', 'créateurs', 'sport', 'crypto', 'politique', 'culture', 'autre'];
 const SORTS = [
-  { key: 'trending', label: '🔥 Trending' },
-  { key: 'nouveau',  label: '✨ Nouveau'  },
-  { key: 'ferme',    label: '⏰ Bientôt' },
+  { key: 'trending', label: 'Trending',  Icon: Flame },
+  { key: 'nouveau',  label: 'Nouveau',   Icon: Star  },
+  { key: 'ferme',    label: 'Bientôt',   Icon: Clock },
 ];
 
-// ── Cursor glow ───────────────────────────────────────────────────────────────
-function CursorGlow() {
-  const ref = useRef(null);
+// ── Live activity bar (compact, inline) ──────────────────────────────────────
+function LiveActivityBar() {
+  const [data, setData] = useState(null);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const base = import.meta.env.VITE_API_URL || '';
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const move = (e) => {
-      el.style.left = e.clientX + 'px';
-      el.style.top  = e.clientY + 'px';
+    const load = () => {
+      fetch(`${base}/api/feed/live`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setData(d); })
+        .catch(() => {});
     };
-    window.addEventListener('mousemove', move);
-    return () => window.removeEventListener('mousemove', move);
+    load();
+    const t = setInterval(load, 15000);
+    return () => clearInterval(t);
   }, []);
-  return (
-    <div ref={ref} style={{
-      position: 'fixed', width: 400, height: 400, borderRadius: '50%',
-      background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)',
-      pointerEvents: 'none', zIndex: 0,
-      transform: 'translate(-50%, -50%)',
-      transition: 'opacity .3s',
-    }} />
-  );
-}
 
-// ── Hero banner ───────────────────────────────────────────────────────────────
-function HeroBanner() {
-  const [stats, setStats] = useState({ markets: 0, users: 0 });
+  const events = data?.events || [];
+  const activeUsers = data?.activeUsers || 0;
 
+  // Cycle through events
   useEffect(() => {
-    // Animate counters
-    const targets = { markets: 42, users: 318 };
-    let frame = 0;
-    const total = 60;
-    const timer = setInterval(() => {
-      frame++;
-      const pct = frame / total;
-      const ease = 1 - Math.pow(1 - pct, 3);
-      setStats({
-        markets: Math.round(targets.markets * ease),
-        users:   Math.round(targets.users * ease),
-      });
-      if (frame >= total) clearInterval(timer);
-    }, 16);
-    return () => clearInterval(timer);
-  }, []);
+    if (events.length <= 1) return;
+    const t = setInterval(() => setCurrentIdx(i => (i + 1) % events.length), 4000);
+    return () => clearInterval(t);
+  }, [events.length]);
+
+  if (!data || events.length === 0) return null;
+
+  const ev = events[currentIdx % events.length];
+  let text = '';
+  let color = '#94a3b8';
+  if (ev?.type === 'bet') {
+    color = ev.side === 'YES' ? '#22c55e' : '#ef4444';
+    text = `${ev.userId} a misé ${ev.amount} USDC ${ev.side} sur "${(ev.marketTitle || '').slice(0, 50)}"`;
+  } else if (ev?.type === 'market_created') {
+    color = '#06b6d4';
+    text = `Nouveau marché : "${(ev.marketTitle || '').slice(0, 55)}"`;
+  } else if (ev?.type === 'market_resolved') {
+    color = '#f59e0b';
+    text = `Résolu : "${(ev.marketTitle || '').slice(0, 45)}" → ${ev.outcome}`;
+  }
 
   return (
     <div style={{
-      position: 'relative', overflow: 'hidden',
-      borderRadius: 20, marginBottom: 32,
-      padding: '48px 32px', textAlign: 'center',
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 14px', borderRadius: 10, marginBottom: 16,
+      background: 'rgba(255,255,255,0.02)',
+      border: '1px solid rgba(255,255,255,0.06)',
+      overflow: 'hidden',
     }}>
-      {/* Background layers */}
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 0,
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% 20%, rgba(124,58,237,.18) 0%, transparent 70%),
-          radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,.10) 0%, transparent 60%),
-          radial-gradient(ellipse 40% 30% at 20% 70%, rgba(168,85,247,.08) 0%, transparent 50%)
-        `,
-        animation: 'hero-shift 8s ease-in-out infinite alternate',
-      }} />
-      <div style={{
-        position: 'absolute', inset: 0, zIndex: 0,
-        backgroundImage: `
-          linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px)
-        `,
-        backgroundSize: '40px 40px',
-      }} />
-      {/* Border */}
-      <div style={{
-        position: 'absolute', inset: 0, borderRadius: 20,
-        border: '1px solid rgba(255,255,255,0.07)',
-      }} />
+      {/* Live dot */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%', background: '#22c55e',
+          boxShadow: '0 0 6px rgba(34,197,94,0.6)',
+          animation: 'live-dot 2s ease-in-out infinite',
+        }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', letterSpacing: '0.03em' }}>
+          {activeUsers > 0 ? `${activeUsers} en ligne` : 'LIVE'}
+        </span>
+      </div>
 
-      {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
-          color: '#a855f7', padding: '5px 16px', borderRadius: 999,
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
-          marginBottom: 18,
-        }}>
-          ✨ Social Betting · Predictions
-        </div>
+      {/* Separator */}
+      <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
 
-        <h1 style={{
-          fontSize: 'clamp(3rem, 10vw, 6rem)',
-          fontWeight: 900, letterSpacing: '-3px', lineHeight: .9,
-          background: 'linear-gradient(135deg, #ffffff 0%, #a855f7 45%, #06b6d4 85%)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text', marginBottom: 16,
-        }}>
-          BETLY
-        </h1>
+      {/* Event text — fades between events */}
+      <div key={currentIdx} style={{
+        fontSize: 12, color: '#94a3b8', flex: 1,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        animation: 'fade-up 0.35s ease both',
+      }}>
+        <span style={{ color, fontWeight: 600 }}>·</span>{' '}{text}
+      </div>
 
-        <p style={{
-          fontSize: 16, fontWeight: 600, color: '#f8fafc', marginBottom: 8,
-        }}>
-          Parie sur l'avenir. Gagne des USDC.
-        </p>
-        <p style={{
-          fontSize: 14, color: '#94a3b8', maxWidth: 480, margin: '0 auto 28px', lineHeight: 1.6,
-        }}>
-          Marchés de prédiction vérifiables — sport, crypto, politique, culture.
-          Oracle IA + vote communautaire.
-        </p>
+      <style>{`
+        @keyframes live-dot {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
-        {/* Stats */}
-        <div style={{ display: 'flex', gap: 48, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 28 }}>
-          {[
-            { num: stats.markets, label: 'marchés actifs' },
-            { num: stats.users,   label: 'parieurs' },
-            { num: '100%',        label: 'on-chain' },
-          ].map(({ num, label }) => (
-            <div key={label} style={{ textAlign: 'center' }}>
+// ── Trending Strip (compact horizontal band) ────────────────────────────────
+function TrendingStrip() {
+  const [markets, setMarkets] = useState([]);
+  const base = import.meta.env.VITE_API_URL || '';
+  const isM = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  useEffect(() => {
+    fetch(`${base}/api/markets?sort=trending&limit=6`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const list = d?.markets || d || [];
+        if (list.length > 0) setMarkets(list.slice(0, 6));
+      })
+      .catch(() => {});
+  }, []);
+
+  if (markets.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: isM ? 14 : 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Flame size={14} color="#a855f7" strokeWidth={2.5} />
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#a855f7', letterSpacing: '0.02em' }}>
+          Trending
+        </span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+      </div>
+
+      {/* Horizontal scroll strip */}
+      <div className="scroll-row no-scrollbar" style={{ gap: isM ? 8 : 10 }}>
+        {markets.map(m => {
+          const yesP = m.tYes && m.tNo ? Math.round((m.tYes / (m.tYes + m.tNo)) * 100) : 50;
+          const volume = ((m.tYes || 0) + (m.tNo || 0)) / 1e6;
+          const deadline = m.deadline || m.closesAt;
+          const timeLeft = deadline ? (() => {
+            const diff = new Date(deadline) - new Date();
+            if (diff <= 0) return 'Fini';
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            return d > 0 ? `${d}j` : `${h}h`;
+          })() : '';
+
+          return (
+            <a
+              key={m._id || m.id}
+              href={`/market/${m._id || m.id}`}
+              style={{
+                textDecoration: 'none', color: 'inherit',
+                minWidth: isM ? 220 : 260, maxWidth: isM ? 240 : 280,
+                padding: isM ? '12px 14px' : '14px 18px',
+                borderRadius: 14,
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                transition: 'all .2s',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(168,85,247,0.3)'; e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+            >
+              {/* Question */}
               <div style={{
-                fontSize: 28, fontWeight: 800, letterSpacing: '-1px',
-                background: 'linear-gradient(135deg, #a855f7, #06b6d4)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
+                fontSize: isM ? 12 : 13, fontWeight: 700, color: '#f8fafc',
+                lineHeight: 1.3,
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                minHeight: isM ? 32 : 34,
               }}>
-                {typeof num === 'number' ? num.toLocaleString('fr-FR') : num}
+                {m.question || m.title}
               </div>
-              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{label}</div>
-            </div>
-          ))}
-        </div>
 
-        {/* CTAs */}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a
-            href="/create"
-            style={{
-              padding: '12px 28px', borderRadius: 12, textDecoration: 'none',
-              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-              color: '#fff', fontSize: 14, fontWeight: 700,
-              boxShadow: '0 0 28px rgba(124,58,237,.4)',
-              transition: 'all .25s',
-              display: 'inline-block',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 40px rgba(124,58,237,.6)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 0 28px rgba(124,58,237,.4)'; }}
-          >
-            🎯 Créer un marché
-          </a>
-          <a
-            href="/leaderboard"
-            style={{
-              padding: '12px 28px', borderRadius: 12, textDecoration: 'none',
-              background: 'rgba(255,255,255,0.05)', color: '#f8fafc',
-              border: '1px solid rgba(255,255,255,0.1)', fontSize: 14, fontWeight: 600,
-              backdropFilter: 'blur(10px)',
-              transition: 'all .25s', display: 'inline-block',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor='rgba(124,58,237,.3)'; e.currentTarget.style.transform='translateY(-2px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.1)'; e.currentTarget.style.transform='translateY(0)'; }}
-          >
-            🏆 Classement
-          </a>
-        </div>
+              {/* Odds bar mini */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#22c55e', minWidth: 32 }}>
+                  {yesP}%
+                </span>
+                <div style={{
+                  flex: 1, height: 4, borderRadius: 99,
+                  background: 'rgba(255,255,255,0.06)', overflow: 'hidden',
+                  display: 'flex',
+                }}>
+                  <div style={{
+                    width: `${yesP}%`, background: '#22c55e',
+                    borderRadius: 99, transition: 'width 0.4s ease',
+                  }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444', minWidth: 32, textAlign: 'right' }}>
+                  {100 - yesP}%
+                </span>
+              </div>
+
+              {/* Meta row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 10, color: '#64748b' }}>
+                  {volume > 0 ? `${volume.toFixed(1)} USDC` : 'Nouveau'}
+                </span>
+                {timeLeft && (
+                  <span style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Clock size={9} strokeWidth={1.5} /> {timeLeft}
+                  </span>
+                )}
+              </div>
+            </a>
+          );
+        })}
       </div>
     </div>
   );
@@ -199,7 +233,7 @@ function SkeletonCard() {
   );
 }
 
-// ── Feed personnalisé hook ─────────────────────────────────────────────────────
+// ── Feed personnalisé hook ───────────────────────────────────────────────────
 function usePersonalizedFeed(userId) {
   const { data, loading, error } = useApi(
     userId ? '/api/markets/personalized' : null,
@@ -208,15 +242,21 @@ function usePersonalizedFeed(userId) {
   return { markets: data?.markets || [], reason: data?.reason, loading, error };
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── Main ─────────────────────────────────────────────────────────────────────
 export default function Feed() {
-  const [feedTab, setFeedTab]   = useState('global');  // 'global' | 'pour-toi'
+  const [feedTab, setFeedTab]   = useState('global');
   const [category, setCategory] = useState('tous');
   const [sort, setSort]         = useState('trending');
   const [refreshKey, setRefreshKey] = useState(0);
-  const userId = useUserId();
+  const userId  = useUserId();
+  const { user, openAuth } = useAuth();
+  const isMobile = useIsMobile();
 
-  const globalFeed = useApi('/api/markets', { params: { category, sort } });
+  const isCreatorFeed = category === 'créateurs';
+  const globalFeed = useApi(
+    isCreatorFeed ? '/api/markets/creators' : '/api/markets',
+    { params: isCreatorFeed ? { sort } : { category, sort } }
+  );
   const persoFeed  = usePersonalizedFeed(userId);
 
   const { data, loading, error } = feedTab === 'pour-toi' ? persoFeed : globalFeed;
@@ -227,26 +267,19 @@ export default function Feed() {
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 16px', position: 'relative', zIndex: 1 }}>
-      <CursorGlow />
-      <HeroBanner />
-
-      {/* Gradient divider */}
-      <div style={{
-        height: 2, maxWidth: 600, margin: '0 auto 32px',
-        background: 'linear-gradient(90deg, transparent, #7c3aed, #a855f7, #06b6d4, transparent)',
-        borderRadius: 999, opacity: .4,
-      }} />
+      <TrendingStrip />
 
       {/* ── Feed tabs ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 16 }}>
         {[
-          { key: 'global',   label: '🌐 Global' },
-          { key: 'pour-toi', label: '✨ Pour toi' },
-        ].map(({ key, label }) => (
+          { key: 'global',   label: 'Global',   Icon: Globe },
+          { key: 'pour-toi', label: 'Pour toi', Icon: Star  },
+        ].map(({ key, label, Icon }) => (
           <button
             key={key}
             onClick={() => setFeedTab(key)}
             style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '7px 18px', borderRadius: 10, cursor: 'pointer', transition: 'all .2s',
               border: feedTab === key ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
               background: feedTab === key ? 'rgba(168,85,247,0.15)' : 'transparent',
@@ -254,75 +287,89 @@ export default function Feed() {
               fontSize: 13, fontWeight: feedTab === key ? 700 : 500,
             }}
           >
+            <Icon size={13} strokeWidth={1.5} />
             {label}
           </button>
         ))}
         <span style={{ marginLeft: 'auto' }}>
-          <a href="/create" style={{ color: '#a855f7', fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-            Créer →
+          <a href="/create" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            color: '#a855f7', fontSize: 13, fontWeight: 500, textDecoration: 'none',
+          }}>
+            Créer <ChevronRight size={13} strokeWidth={1.5} />
           </a>
         </span>
       </div>
 
-      {/* "Pour toi" context hint */}
+      {/* "Pour toi" hints */}
       {feedTab === 'pour-toi' && persoReason === 'trending_fallback' && !persoFeed.loading && (
         <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
           padding: '10px 14px', borderRadius: 8, marginBottom: 16,
           background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
           color: '#a78bfa', fontSize: 12,
         }}>
-          💡 Paris et suis des créateurs pour personnaliser ce feed — affichage trending pour l'instant
+          <Lightbulb size={13} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+          Paris et suis des créateurs pour personnaliser ce feed
         </div>
       )}
       {feedTab === 'pour-toi' && persoReason === 'padded_with_trending' && !persoFeed.loading && (
         <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
           padding: '10px 14px', borderRadius: 8, marginBottom: 16,
           background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
           color: '#a78bfa', fontSize: 12,
         }}>
-          ✨ Marchés de tes créateurs suivis + les plus tendances
+          <TrendingUp size={13} strokeWidth={1.5} style={{ flexShrink: 0 }} />
+          Marchés de tes créateurs suivis + trending
         </div>
       )}
 
-      {/* Global feed filters — hidden on "Pour toi" */}
+      {/* Global feed filters — single row */}
       {feedTab === 'global' && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flex: 1 }}>
+        <div style={{ marginBottom: 16, position: 'relative' }}>
+          {isMobile && <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 32, background: 'linear-gradient(to right, transparent, #0a0a0f)', zIndex: 2, pointerEvents: 'none' }} />}
+          <div className="scroll-row no-scrollbar" style={{ alignItems: 'center' }}>
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
                 style={{
-                  padding: '5px 14px', borderRadius: 999, cursor: 'pointer', transition: 'all .2s',
+                  padding: '6px 14px', borderRadius: 999, cursor: 'pointer', transition: 'all .15s',
                   border: category === cat ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.08)',
                   background: category === cat ? 'rgba(168,85,247,0.15)' : 'transparent',
                   color: category === cat ? '#a855f7' : '#94a3b8',
-                  fontSize: 12, fontWeight: 500,
+                  fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                  minHeight: 32,
                 }}
               >
                 {cat === 'tous' ? 'Tous' : cat.charAt(0).toUpperCase() + cat.slice(1)}
               </button>
             ))}
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {SORTS.map(({ key, label }) => (
+            <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
+            {SORTS.map(({ key, label, Icon }) => (
               <button
                 key={key}
                 onClick={() => setSort(key)}
                 style={{
-                  padding: '5px 11px', borderRadius: 7, cursor: 'pointer', transition: 'all .15s',
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  padding: '6px 11px', borderRadius: 7, cursor: 'pointer', transition: 'all .15s',
                   border: '1px solid rgba(255,255,255,0.07)',
                   background: sort === key ? 'rgba(255,255,255,0.07)' : 'transparent',
                   color: sort === key ? '#f8fafc' : '#64748b',
-                  fontSize: 12,
+                  fontSize: 12, whiteSpace: 'nowrap', minHeight: 32,
                 }}
               >
+                <Icon size={12} strokeWidth={1.5} />
                 {label}
               </button>
             ))}
           </div>
         </div>
       )}
+
+      {/* ── Live activity bar — compact, inline ── */}
+      <LiveActivityBar />
 
       {error && (
         <div style={{
@@ -334,13 +381,26 @@ export default function Feed() {
         </div>
       )}
 
+      {/* FAB — mobile only */}
+      {isMobile && (
+        <button
+          className="fab"
+          onClick={() => window.location.href = '/create'}
+          title="Créer un marché"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Plus size={22} strokeWidth={2} color="#fff" />
+        </button>
+      )}
+
+      {/* ── Market grid ── */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640, margin: '0 auto' }}>
           {[1,2,3].map(i => <SkeletonCard key={i} />)}
         </div>
       ) : markets.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>📭</div>
+          <Inbox size={36} strokeWidth={1} color="#334155" style={{ marginBottom: 12 }} />
           <div style={{ fontSize: 16, fontWeight: 600, color: '#f8fafc', marginBottom: 6 }}>Aucun marché</div>
           <div style={{ fontSize: 13 }}>
             Sois le premier à{' '}
@@ -348,34 +408,39 @@ export default function Feed() {
           </div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640, margin: '0 auto' }}>
           {markets.map(market => (
             <MarketCard key={market._id} market={market} onBetPlaced={handleBetPlaced} />
           ))}
         </div>
       )}
 
-      {/* Footer */}
-      <div style={{
-        marginTop: 48, paddingTop: 24,
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-      }}>
-        <span style={{ fontSize: 16, fontWeight: 900, background: 'linear-gradient(135deg, #7c3aed, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-          BETLY
-        </span>
-        <div style={{ display: 'flex', gap: 20 }}>
-          {[['/', 'Feed'], ['/leaderboard', 'Classement'], ['/account', 'Compte']].map(([href, label]) => (
-            <a key={href} href={href} style={{ color: '#64748b', fontSize: 12, textDecoration: 'none', transition: 'color .2s' }}
-              onMouseEnter={e => e.currentTarget.style.color='#f8fafc'}
-              onMouseLeave={e => e.currentTarget.style.color='#64748b'}
-            >
-              {label}
-            </a>
-          ))}
+      {/* CTA for non-logged users — clean, not a blur overlay */}
+      {!user && markets.length > 0 && (
+        <div style={{
+          textAlign: 'center', padding: '32px 20px', marginTop: 24,
+          background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)',
+          borderRadius: 16,
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', marginBottom: 8 }}>
+            Prêt à parier ?
+          </div>
+          <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
+            Crée un compte gratuit pour placer tes premiers paris.
+          </div>
+          <button
+            onClick={openAuth}
+            style={{
+              padding: '12px 32px', borderRadius: 12, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+              color: '#fff', fontSize: 14, fontWeight: 700,
+              boxShadow: '0 0 24px rgba(124,58,237,0.4)',
+            }}
+          >
+            Rejoindre BETLY
+          </button>
         </div>
-        <span style={{ color: '#64748b', fontSize: 11 }}>BETLY © 2026</span>
-      </div>
+      )}
     </div>
   );
 }

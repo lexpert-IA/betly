@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
+import { apiFetch } from '../lib/api';
+import ShareButton from '../components/ShareButton';
 
 function StatBox({ label, value, color }) {
   return (
@@ -29,9 +31,7 @@ function statusColor(s) {
 
 export default function Profile({ profileId }) {
   const viewerId = useUserId();
-  const { data, loading, error, refetch } = useApi(`/api/users/${profileId}`, {
-    params: viewerId ? { userId: viewerId } : {},
-  });
+  const { data, loading, error, refetch } = useApi(`/api/users/${profileId}`);
 
   const [following, setFollowing] = useState(null);
   const [followLoading, setFollowLoading] = useState(false);
@@ -53,10 +53,7 @@ export default function Profile({ profileId }) {
     if (!canFollow || followLoading) return;
     setFollowLoading(true);
     try {
-      const base = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${base}/api/users/${profileId}/follow?userId=${viewerId}`, {
-        method: 'POST',
-      });
+      const res = await apiFetch(`/api/users/${profileId}/follow`, { method: 'POST' });
       const json = await res.json();
       setFollowing(json.following);
     } catch (e) {
@@ -105,7 +102,7 @@ export default function Profile({ profileId }) {
                     background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
                     fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)',
                   }}>
-                    ⭐ TOP CRÉATEUR
+                    TOP CRÉATEUR
                   </span>
                 )}
               </div>
@@ -250,6 +247,14 @@ export default function Profile({ profileId }) {
                       }}>
                         {bet.status === 'won' ? 'Gagné' : bet.status === 'lost' ? 'Perdu' : 'En cours'}
                       </span>
+                      {bet.status === 'won' && bet.marketId && (
+                        <ShareButton
+                          variant="won"
+                          bet={{ _id: bet._id, side: bet.side, amount: bet.amount, payout: bet.payout, odds: bet.odds }}
+                          market={{ _id: bet.marketId, title: bet.marketTitle || '' }}
+                          size="sm"
+                        />
+                      )}
                     </div>
                   </div>
                 ))}

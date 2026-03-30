@@ -46,6 +46,24 @@ app.use('/api', async (req, res, next) => {
 });
 app.use('/api', apiRouter);
 
+// ── Firebase Auth handler proxy (same-domain auth to avoid 3rd-party cookie issues) ──
+const https = require('https');
+app.get('/__/auth/*', (req, res) => {
+  const fbUrl = `https://betly-1a8e6.firebaseapp.com${req.originalUrl}`;
+  https.get(fbUrl, (fbRes) => {
+    res.status(fbRes.statusCode);
+    Object.entries(fbRes.headers).forEach(([k, v]) => {
+      if (!['transfer-encoding', 'connection'].includes(k.toLowerCase())) {
+        res.setHeader(k, v);
+      }
+    });
+    fbRes.pipe(res);
+  }).on('error', (err) => {
+    logger.error(`Firebase auth proxy error: ${err.message}`);
+    res.status(502).send('Auth proxy error');
+  });
+});
+
 // ── Serve React frontend (built by Vite into web/dist/) ──────────────────────
 const DIST = path.join(__dirname, 'web', 'dist');
 app.use(express.static(DIST));
@@ -119,6 +137,56 @@ app.get('/market/:id', async (req, res) => {
   }
 });
 
+// ── OpenGraph injection for /share/:betId ─────────────────────────────────────
+app.get('/share/:betId', async (req, res) => {
+  const { betId } = req.params;
+  let title = 'Un pari sur BETLY — Marchés de prédiction';
+  let desc  = 'Rejoins BETLY et parie sur les événements du moment.';
+
+  try {
+    await ensureMongo();
+    const Bet    = require('./db/models/Bet');
+    const Market = require('./db/models/Market');
+    const User   = require('./db/models/User');
+
+    const bet = await Bet.findById(betId).lean();
+    if (bet) {
+      const market = await Market.findById(bet.marketId).lean();
+      const bettor = await User.findOne({ userId: bet.userId }).select('username').lean();
+      if (market) {
+        const side   = bet.side === 'YES' ? 'OUI' : 'NON';
+        const pseudo = bettor?.username || 'Quelqu\'un';
+        const gain   = bet.payout && bet.amount ? Math.round(((bet.payout - bet.amount) / bet.amount) * 100) : null;
+        title = `${pseudo} parie ${side} sur "${market.title.slice(0, 50)}" — BETLY`;
+        desc  = `Mise : ${bet.amount} USDC${gain ? ` · Gain potentiel : +${gain}%` : ''} · Rejoins BETLY et parie toi aussi !`;
+      }
+    }
+  } catch (e) {
+    logger.warn(`OG share fetch error for bet ${betId}: ${e.message}`);
+  }
+
+  const pageUrl = `${SITE_URL}/share/${betId}`;
+  const ogTags  = `
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="${pageUrl}" />
+    <meta property="og:title"       content="${title.replace(/"/g, '&quot;')}" />
+    <meta property="og:description" content="${desc.replace(/"/g, '&quot;')}" />
+    <meta property="og:site_name"   content="BETLY" />
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="${title.replace(/"/g, '&quot;')}" />
+    <meta name="twitter:description" content="${desc.replace(/"/g, '&quot;')}" />
+    <meta name="description"         content="${desc.replace(/"/g, '&quot;')}" />`;
+
+  try {
+    let html = fs.readFileSync(path.join(DIST, 'index.html'), 'utf8');
+    html = html.replace('<head>', `<head>${ogTags}`);
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch {
+    res.sendFile(path.join(DIST, 'index.html'));
+  }
+});
+
 // SPA fallback — all non-API routes → index.html
 app.get('*', (req, res) => {
   res.sendFile(path.join(DIST, 'index.html'));
@@ -135,7 +203,15 @@ if (require.main === module) {
     });
     const { startResolver } = require('./src/agents/resolver');
     const { startTrending } = require('./src/agents/trending');
+    const { startPipeline, startSnapshotJob, startWithdrawalProcessor } = require('./src/pipeline');
+    const { startShareBotAgent } = require('./src/agents/shareBotAgent');
+    const _Market = require('./db/models/Market');
+    const _Bet    = require('./db/models/Bet');
     startResolver();
     startTrending();
+    startPipeline();
+    startSnapshotJob();
+    startWithdrawalProcessor();
+    startShareBotAgent(_Market, _Bet);
   });
 }

@@ -32,6 +32,12 @@ export function usePlaceBet() {
       const amount = parseUnits(String(amountUsdc), 6); // USDC = 6 decimals
       const sideEnum = side === 'YES' ? Outcome.YES : Outcome.NO;
 
+      console.log('[PLACEBET DEBUG] chainId:', chainId);
+      console.log('[PLACEBET DEBUG] contract:', addrs.betlyMarket);
+      console.log('[PLACEBET DEBUG] usdc:', addrs.usdc);
+      console.log('[PLACEBET DEBUG] amount:', amount.toString(), 'side:', sideEnum);
+      console.log('[PLACEBET DEBUG] wallet:', address);
+
       // 1. Check allowance
       const allowance = await publicClient.readContract({
         address: addrs.usdc,
@@ -39,6 +45,8 @@ export function usePlaceBet() {
         functionName: 'allowance',
         args: [address, addrs.betlyMarket],
       });
+
+      console.log('[PLACEBET DEBUG] allowance:', allowance.toString(), 'needed:', amount.toString(), 'needsApprove:', allowance < amount);
 
       // 2. Approve if needed
       if (allowance < amount) {

@@ -19,7 +19,7 @@ function EventRow({ event, onClick, isNew }) {
   let icon, text, color;
 
   if (type === 'bet') {
-    icon = side === 'YES' ? '🟢' : '🔴';
+    icon = <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: side === 'YES' ? '#22c55e' : '#ef4444' }} />;
     color = side === 'YES' ? '#22c55e' : '#ef4444';
     text = (
       <>
@@ -31,7 +31,7 @@ function EventRow({ event, onClick, isNew }) {
       </>
     );
   } else if (type === 'market_created') {
-    icon = '✨';
+    icon = <span style={{ fontSize: 10, fontWeight: 800, color: '#f59e0b' }}>NEW</span>;
     color = '#f59e0b';
     text = (
       <>
@@ -40,7 +40,7 @@ function EventRow({ event, onClick, isNew }) {
       </>
     );
   } else if (type === 'market_resolved') {
-    icon = '🏆';
+    icon = <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa' }}>W</span>;
     color = '#a78bfa';
     text = (
       <>

@@ -12,7 +12,7 @@ export default function ConfidenceBadge({ score }) {
     color = '#f59e0b';
     bg = 'rgba(245,158,11,0.12)';
   } else {
-    label = '⚠ Risqué';
+    label = 'Risqué';
     color = '#ef4444';
     bg = 'rgba(239,68,68,0.12)';
   }

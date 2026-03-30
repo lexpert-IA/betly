@@ -9,13 +9,13 @@ export function toast(message, type = 'info', duration = 3500) {
 }
 
 const TOAST_STYLES = {
-  info:    { bg: 'rgba(124,58,237,0.95)',   border: 'rgba(168,85,247,0.4)', icon: '🔔' },
-  success: { bg: 'rgba(5,150,105,0.95)',    border: 'rgba(34,197,94,0.4)',  icon: '✓'  },
-  error:   { bg: 'rgba(185,28,28,0.95)',    border: 'rgba(239,68,68,0.4)',  icon: '✗'  },
-  warning: { bg: 'rgba(146,64,14,0.95)',    border: 'rgba(245,158,11,0.4)', icon: '⚠' },
-  win:     { bg: 'rgba(5,150,105,0.95)',    border: 'rgba(34,197,94,0.4)',  icon: '💰' },
-  loss:    { bg: 'rgba(127,29,29,0.95)',    border: 'rgba(239,68,68,0.4)',  icon: '😞' },
-  notif:   { bg: 'rgba(15,23,42,0.97)',     border: 'rgba(124,58,237,0.4)', icon: '🔔' },
+  info:    { bg: 'rgba(124,58,237,0.95)',   border: 'rgba(168,85,247,0.4)', icon: 'i'  },
+  success: { bg: 'rgba(5,150,105,0.95)',    border: 'rgba(34,197,94,0.4)',  icon: '+'  },
+  error:   { bg: 'rgba(185,28,28,0.95)',    border: 'rgba(239,68,68,0.4)',  icon: 'x'  },
+  warning: { bg: 'rgba(146,64,14,0.95)',    border: 'rgba(245,158,11,0.4)', icon: '!'  },
+  win:     { bg: 'rgba(5,150,105,0.95)',    border: 'rgba(34,197,94,0.4)',  icon: '$'  },
+  loss:    { bg: 'rgba(127,29,29,0.95)',    border: 'rgba(239,68,68,0.4)',  icon: '-'  },
+  notif:   { bg: 'rgba(15,23,42,0.97)',     border: 'rgba(124,58,237,0.4)', icon: '*'  },
 };
 
 function ToastItem({ id, message, type, duration, onRemove }) {
@@ -54,7 +54,12 @@ function ToastItem({ id, message, type, duration, onRemove }) {
       }}
       onClick={() => { setVisible(false); setTimeout(() => onRemove(id), 300); }}
     >
-      <span style={{ fontSize: type === 'win' ? 22 : 18, flexShrink: 0 }}>{style.icon}</span>
+      <span style={{
+        width: type === 'win' ? 28 : 24, height: type === 'win' ? 28 : 24,
+        borderRadius: '50%', background: 'rgba(255,255,255,0.15)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: type === 'win' ? 14 : 12, fontWeight: 700, color: '#fff', flexShrink: 0,
+      }}>{style.icon}</span>
       <span style={{ fontSize: 13, fontWeight: type === 'win' ? 700 : 500, color: '#f8fafc', lineHeight: 1.4 }}>
         {message}
       </span>

@@ -1,4 +1,29 @@
 @import "tailwindcss";
+@import "tailwindcss/utilities";
+
+/* ── shadcn/ui theme tokens (mapped to BETLY dark theme) ── */
+@theme inline {
+  --color-background: #0a0a0f;
+  --color-foreground: #f8fafc;
+  --color-card: #0f0f1a;
+  --color-card-foreground: #f8fafc;
+  --color-popover: #13131f;
+  --color-popover-foreground: #f8fafc;
+  --color-primary: #7c3aed;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: rgba(255,255,255,0.06);
+  --color-secondary-foreground: #f8fafc;
+  --color-muted: rgba(255,255,255,0.06);
+  --color-muted-foreground: #94a3b8;
+  --color-accent: rgba(124,58,237,0.15);
+  --color-accent-foreground: #f8fafc;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(255,255,255,0.08);
+  --color-input: rgba(255,255,255,0.08);
+  --color-ring: #7c3aed;
+  --radius: 0.5rem;
+}
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -100,4 +125,120 @@ button, [role="button"] { -webkit-tap-highlight-color: transparent; }
 /* Mobile safe area */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {
   .bottom-nav { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+/* ── Mobile utilities ───────────────────────────────────── */
+
+/* Hide scrollbars while keeping scrollability */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Touch target minimum 44px */
+.touch-target { min-height: 44px; min-width: 44px; }
+
+/* Horizontal scroll row */
+.scroll-row {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+.scroll-row::-webkit-scrollbar { display: none; }
+.scroll-row > * { flex-shrink: 0; }
+
+/* FAB */
+.fab {
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 4px 20px rgba(124,58,237,0.5);
+  z-index: 150;
+  transition: transform .15s, box-shadow .15s;
+}
+.fab:active { transform: scale(0.93); box-shadow: 0 2px 12px rgba(124,58,237,0.4); }
+
+/* Accordion */
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+/* Prevent overflow on all screens */
+* { box-sizing: border-box; }
+img, video { max-width: 100%; }
+
+/* iOS input zoom prevention (font-size >= 16px) */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="date"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Reduced motion ──────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Mobile-specific shortening of animations ────────────── */
+@media (max-width: 768px) {
+  .page-enter { animation-duration: 0.15s; }
+  @keyframes hero-shift { 0%, 100% { opacity: 1; transform: none; } }
+}
+
+/* ── Sticky bet form on mobile ──────────────────────────── */
+@media (max-width: 768px) {
+  .bet-form-sticky {
+    position: fixed;
+    bottom: 60px;
+    left: 0; right: 0;
+    z-index: 120;
+    padding: 10px 16px;
+    background: rgba(10,10,15,0.97);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    backdrop-filter: blur(16px);
+  }
+  .bet-form-spacer { height: 140px; }
+}
+
+/* Leaderboard cards on mobile */
+@media (max-width: 768px) {
+  .lb-row-grid { display: none !important; }
+  .lb-row-card { display: flex !important; }
+}
+@media (min-width: 769px) {
+  .lb-row-card { display: none !important; }
+  .lb-row-grid { display: grid !important; }
+}
+
+/* Admin desktop only */
+@media (max-width: 768px) {
+  .admin-desktop-only { display: none !important; }
+  .admin-mobile-msg   { display: block !important; }
+}
+@media (min-width: 769px) {
+  .admin-mobile-msg { display: none !important; }
 }

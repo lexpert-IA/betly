@@ -1652,6 +1652,7 @@ router.get('/auth/me', async (req, res) => {
         totalBets:     u.totalBets,
         wonBets:       u.wonBets,
         reputation:    u.reputation,
+        walletAddress: u.walletAddress || null,
       });
     }
     res.status(404).json({ error: 'Profil introuvable' });
@@ -2155,6 +2156,28 @@ router.post('/admin/reject/:id', async (req, res) => {
 // PARTIE 3 — WALLET FLOW
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ─── POST /api/wallet/create — création d'un wallet custodial Betly ───────────
+router.post('/wallet/create', async (req, res) => {
+  try {
+    const user = req.dbUser;
+    if (!user) return res.status(401).json({ error: 'Non authentifié' });
+
+    if (user.walletAddress) {
+      return res.json({ walletAddress: user.walletAddress, isNew: false });
+    }
+
+    const { createWallet } = require('../wallet/custodialWallet');
+    const { walletAddress, encryptedPrivateKey } = await createWallet();
+
+    await User.findByIdAndUpdate(user._id, { walletAddress, encryptedPrivateKey });
+    logger.info(`[WALLET] Betly custodial wallet créé pour user ${user._id}: ${walletAddress}`);
+    res.json({ walletAddress, isNew: true });
+  } catch (err) {
+    logger.error(`POST /wallet/create error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── POST /api/deposit/check — detect on-chain deposit and credit ─────────────
 router.post('/deposit/check', async (req, res) => {
   try {
@@ -2283,6 +2306,36 @@ router.get('/withdraw/history', async (req, res) => {
 
     const withdrawals = await Withdrawal.find({ userId }).sort({ createdAt: -1 }).limit(20).lean();
     res.json({ withdrawals });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/admin/wallet-backup ────────────────────────────────────────────
+router.post('/admin/wallet-backup', async (req, res) => {
+  try {
+    const { secret, passphrase } = req.body;
+    if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'Forbidden' });
+    if (!passphrase || passphrase.length < 12) {
+      return res.status(400).json({ error: 'Passphrase required (min 12 chars)' });
+    }
+    const { createBackup } = require('../wallet/walletBackup');
+    const filepath = await createBackup(passphrase);
+    res.json({ success: true, filepath });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/admin/withdrawal-status ────────────────────────────────────────
+router.get('/admin/withdrawal-status', async (req, res) => {
+  try {
+    const pending    = await Withdrawal.countDocuments({ status: 'pending' });
+    const processing = await Withdrawal.countDocuments({ status: 'processing' });
+    const completed  = await Withdrawal.countDocuments({ status: 'completed' });
+    const failed     = await Withdrawal.countDocuments({ status: 'failed' });
+    const recent     = await Withdrawal.find().sort({ createdAt: -1 }).limit(5).lean();
+    res.json({ pending, processing, completed, failed, recent });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -3254,7 +3307,7 @@ router.get('/markets/creators', async (req, res) => {
 // ─── POST /api/auth/age-verify — save age verification ───────────────────────
 router.post('/auth/age-verify', async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.query.userId || req.dbUser?._id?.toString();
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
     await User.findOneAndUpdate(
@@ -3293,7 +3346,7 @@ router.get('/markets/:id/snapshots', async (req, res) => {
 // ─── GET /api/positions — current user active/all bets ───────────────────────
 router.get('/positions', async (req, res) => {
   try {
-    const userId = req.userId;
+    const userId = req.query.userId || req.dbUser?._id?.toString();
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { status = 'active' } = req.query;
 
@@ -3303,7 +3356,7 @@ router.get('/positions', async (req, res) => {
     const bets = await Bet.find(query).sort({ placedAt: -1 }).limit(100).lean();
     const marketIds = [...new Set(bets.map(b => b.marketId?.toString()).filter(Boolean))];
     const markets = await Market.find({ _id: { $in: marketIds } })
-      .select('title category totalYes totalNo resolutionDate status _id')
+      .select('title category totalYes totalNo resolutionDate status onChainId _id')
       .lean();
     const marketMap = {};
     markets.forEach(m => { marketMap[m._id.toString()] = m; });
@@ -3502,6 +3555,146 @@ router.post('/pipeline/trigger', async (req, res) => {
     runPipeline().catch(err => logger.error(`Manual pipeline trigger error: ${err.message}`));
     res.json({ ok: true, message: 'Pipeline cycle triggered' });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Mark a bet as claimed in DB ─────────────────────────────────────────────
+router.post('/bets/:id/claim', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.dbUser?._id?.toString();
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    const bet = await Bet.findById(req.params.id);
+    if (!bet) return res.status(404).json({ error: 'Bet not found' });
+    if (bet.userId !== userId) return res.status(403).json({ error: 'Not your bet' });
+    bet.status = 'claimed';
+    bet.claimedAt = new Date();
+    await bet.save();
+    // Reduce locked balance
+    await User.findByIdAndUpdate(userId, {
+      $inc: { lockedBalance: -bet.amount },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Admin: resolve a market (update DB status + set bets won/lost) ──────────
+router.post('/markets/:id/resolve', async (req, res) => {
+  try {
+    const { secret } = req.query;
+    if (secret !== (process.env.ADMIN_SECRET || 'betly-admin-2025')) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+    const { outcome } = req.body; // 'YES' or 'NO'
+    if (!outcome || !['YES', 'NO'].includes(outcome)) {
+      return res.status(400).json({ error: 'outcome must be YES or NO' });
+    }
+
+    const market = await Market.findById(req.params.id);
+    if (!market) return res.status(404).json({ error: 'Market not found' });
+
+    market.status = 'resolved';
+    market.outcome = outcome;
+    market.resolvedAt = new Date();
+    await market.save();
+
+    // Update all bets on this market
+    const totalPool = (market.totalYes || 0) + (market.totalNo || 0);
+    const winPool = outcome === 'YES' ? (market.totalYes || 0) : (market.totalNo || 0);
+
+    // Mark winners
+    const winners = await Bet.find({ marketId: market._id, side: outcome, status: 'active' });
+    for (const bet of winners) {
+      const gross = winPool > 0 ? (bet.amount / winPool) * totalPool : bet.amount;
+      const payout = gross * 0.98; // 2% fee
+      bet.status = 'won';
+      bet.payout = payout;
+      bet.fee = gross * 0.02;
+      bet.settledAt = new Date();
+      await bet.save();
+    }
+
+    // Mark losers
+    const losers = await Bet.find({ marketId: market._id, side: { $ne: outcome }, status: 'active' });
+    await Bet.updateMany(
+      { marketId: market._id, side: { $ne: outcome }, status: 'active' },
+      { $set: { status: 'lost', payout: 0, settledAt: new Date() } }
+    );
+
+    // Send notifications
+    const title = market.title?.slice(0, 40) || 'Marché';
+    for (const bet of winners) {
+      const netGain = (bet.payout - bet.amount).toFixed(2);
+      await notify({
+        userId: bet.userId,
+        type: 'market_resolved_won',
+        message: `🎉 Tu as gagné +${netGain} USDC sur "${title}"`,
+        marketId: market._id.toString(),
+        amount: bet.payout,
+      });
+    }
+    for (const bet of losers) {
+      await notify({
+        userId: bet.userId,
+        type: 'market_resolved_lost',
+        message: `😔 Tu as perdu ${bet.amount} USDC sur "${title}"`,
+        marketId: market._id.toString(),
+        amount: bet.amount,
+      });
+    }
+
+    res.json({ ok: true, winners: winners.length, losers: losers.length, outcome });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Record an on-chain bet in DB (so positions page can show it) ────────────
+router.post('/markets/:id/bet-onchain', async (req, res) => {
+  try {
+    const userId = req.query.userId || req.dbUser?._id?.toString();
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { side, amount, txHash, walletAddress } = req.body;
+    if (!side || !amount) return res.status(400).json({ error: 'side and amount required' });
+
+    const market = await Market.findById(req.params.id).lean();
+    if (!market) return res.status(404).json({ error: 'Market not found' });
+
+    // Compute odds from current pool
+    const total = (market.totalYes || 0) + (market.totalNo || 0) + amount;
+    const sidePool = side === 'YES' ? (market.totalYes || 0) + amount : (market.totalNo || 0) + amount;
+    const odds = total > 0 ? sidePool / total : 0.5;
+
+    const bet = await Bet.create({
+      userId,
+      marketId: market._id,
+      side,
+      requestedAmount: amount,
+      filledAmount: amount,
+      amount,
+      odds,
+      status: 'active',
+      type: 'market',
+      orderId: txHash || `onchain-${Date.now()}`,
+      placedAt: new Date(),
+    });
+
+    // Update market pool totals
+    const inc = side === 'YES' ? { totalYes: amount } : { totalNo: amount };
+    await Market.findByIdAndUpdate(market._id, { $inc: inc });
+
+    // Update user stats
+    await User.findByIdAndUpdate(userId, {
+      $inc: { lockedBalance: amount, totalBets: 1 },
+    });
+
+    res.json({ ok: true, betId: bet._id });
+  } catch (err) {
+    // Duplicate orderId = bet already recorded
+    if (err.code === 11000) return res.json({ ok: true, duplicate: true });
     res.status(500).json({ error: err.message });
   }
 });

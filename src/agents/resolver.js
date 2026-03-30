@@ -19,6 +19,7 @@ const config   = require('../../config');
 const logger   = require('../utils/logger');
 
 const anthropic = new Anthropic({ apiKey: config.anthropic.apiKey });
+const { sendMarketResolved } = require('../utils/email');
 
 // ── Level 1 : CoinGecko ──────────────────────────────────────────────────────
 
@@ -162,11 +163,23 @@ async function distributePayout(market, outcome) {
     const share  = winningTotal > 0 ? bet.amount / winningTotal : 0;
     const payout = Math.round(WINNER_POOL * share * 100) / 100;
     await Bet.findByIdAndUpdate(bet._id, { status: 'won', payout });
-    await User.findOneAndUpdate(
+    const winner = await User.findOneAndUpdate(
       { telegramId: bet.userId },
       { $inc: { wonBets: 1, totalEarned: payout, balance: payout } },
-      { upsert: true }
+      { upsert: true, new: true }
     );
+    if (winner?.email) {
+      sendMarketResolved({ to: winner.email, username: winner.username || winner.userId, marketTitle: market.title, won: true, payout }).catch(() => {});
+    }
+  }
+
+  for (const bet of losers) {
+    if (bet.status !== 'lost') {
+      const loser = await User.findOne({ telegramId: bet.userId }).lean();
+      if (loser?.email) {
+        sendMarketResolved({ to: loser.email, username: loser.username || loser.userId, marketTitle: market.title, won: false, payout: 0 }).catch(() => {});
+      }
+    }
   }
 
   if (market.creatorId && market.creatorId !== 'system') {

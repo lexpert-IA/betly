@@ -2,33 +2,38 @@ const hre = require("hardhat");
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners();
-  const betly = await hre.ethers.getContractAt("BetlyLite", "0x8bf84fd7efE6619545aB503d8e4f7018a61a6f16");
+  console.log("Deployer:", deployer.address);
 
-  // Market #0 already exists (Bitcoin > 150k)
-  // Create markets #1-#5
+  const betlyAddr = "0xcCD35b36845371299C34A66AB9548857c10317e4";
+  const betly = await hre.ethers.getContractAt("BetlyYield", betlyAddr);
+
+  const admin = await betly.admin();
+  console.log("Admin:", admin);
+  const usdc = await betly.usdc();
+  console.log("USDC:", usdc);
+
   const markets = [
-    { title: "France Euro 2026", days: 90 },
-    { title: "ChatGPT-5 avant septembre 2025", days: 60 },
-    { title: "Macron finit son mandat", days: 365 },
-    { title: "Severance S3 avant 2026", days: 180 },
-    { title: "ETH/BTC ratio > 0.05", days: 30 },
+    { days: 30 },
+    { days: 90 },
+    { days: 60 },
+    { days: 365 },
+    { days: 180 },
+    { days: 30 },
   ];
 
   for (let i = 0; i < markets.length; i++) {
-    const deadline = Math.floor(Date.now() / 1000) + markets[i].days * 24 * 3600;
-    const tx = await betly.create(deadline);
-    await tx.wait();
-    console.log(`Market #${i + 1} created: ${markets[i].title} (deadline: ${new Date(deadline * 1000).toISOString().slice(0, 10)})`);
+    const dl = Math.floor(Date.now() / 1000) + markets[i].days * 86400;
+    console.log("Creating market #" + i + "...");
+    const tx = await betly.create(dl, { gasLimit: 100000 });
+    const receipt = await tx.wait();
+    console.log("Market #" + i + " created — gas: " + receipt.gasUsed);
   }
 
-  const total = await betly.mid();
-  console.log(`\nTotal markets on-chain: ${total}`);
+  const currentMid = await betly.mid();
+  console.log("\nTotal markets: " + currentMid);
 
   const bal = await hre.ethers.provider.getBalance(deployer.address);
-  console.log(`Remaining POL: ${hre.ethers.formatEther(bal)}`);
+  console.log("Remaining: " + hre.ethers.formatEther(bal) + " POL");
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch(e => { console.error(e); process.exitCode = 1; });

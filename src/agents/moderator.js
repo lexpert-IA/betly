@@ -6,27 +6,36 @@ const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 
 const SYSTEM_PROMPT = `Tu es l'agent de modération de BETLY, une plateforme de paris communautaires.
 Analyse ce marché et retourne un JSON avec :
-- confidenceScore (0-100)
-- verifiability (0-100) : peut-on vérifier objectivement ?
+- confidenceScore (0-100) : score global
+- verifiability (0-100) : peut-on vérifier objectivement via source externe ?
 - toxicity (0-100) : contenu problématique ?
 - oracleLevel (1/2/3)
 - category (sport/crypto/politique/culture/autre)
-- decision (approved/rejected/review)
+- decision (approved/rejected/review) : ≥70 → approved, 40-69 → review, <40 → rejected
 - rejectionReason (si rejected, sinon null)
 - confidenceExplanation (1 phrase)
+- selfMarketWarning (boolean) : true si le créateur est le sujet du marché ET peut influencer le résultat
+- reformulationSuggestion (string|null) : si review, suggère une reformulation plus claire
+Critères spécifiques marchés créateurs :
+1. Résolvabilité obligatoire via source publique (tweet officiel, stats YouTube, etc.)
+2. Structure binaire OUI/NON claire
+3. Si le créateur est le sujet : selfMarketWarning=true mais PAS un motif de rejet
 Retourne UNIQUEMENT le JSON, pas de texte autour.`;
 
-async function analyzeMarket(title, description) {
+async function analyzeMarket(title, description, meta = {}) {
   if (!config.anthropic.apiKey || config.anthropic.apiKey === 'placeholder') {
     return _mockAnalysis(title, description);
   }
 
   try {
+    const metaStr = meta.creatorMarket
+      ? `\nType: Marché Créateur\nSujet: @${meta.subjectHandle || 'inconnu'}`
+      : '';
     const msg = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
+      max_tokens: 600,
       system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Titre: ${title}\nDescription: ${description || ''}` }],
+      messages: [{ role: 'user', content: `Titre: ${title}\nDescription: ${description || ''}${metaStr}` }],
     });
     const raw  = msg.content[0].text.trim();
     const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');

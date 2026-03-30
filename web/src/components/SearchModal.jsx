@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 const API = import.meta.env.VITE_API_URL || '';
 
-const LEVEL_EMOJI = { debutant: '🌱', actif: '⚡', expert: '🎯', oracle: '🔮', legende: '👑' };
+const LEVEL_LABEL = { debutant: 'debutant', actif: 'actif', expert: 'expert', oracle: 'oracle', legende: 'legende' };
 
 function useDebounce(value, delay) {
   const [debounced, setDebounced] = useState(value);
@@ -107,7 +107,7 @@ export default function SearchModal({ onClose }) {
           padding: '14px 18px',
           borderBottom: '1px solid rgba(255,255,255,0.07)',
         }}>
-          <span style={{ fontSize: 18, flexShrink: 0 }}>🔍</span>
+          <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
           <input
             ref={inputRef}
             type="text"
@@ -166,7 +166,7 @@ export default function SearchModal({ onClose }) {
                         }}
                         onMouseEnter={() => setSelected(i)}
                       >
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>🎯</span>
+                        <span style={{ fontSize: 13, flexShrink: 0, color: '#a855f7', fontWeight: 700 }}>M</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {m.title}
@@ -203,7 +203,7 @@ export default function SearchModal({ onClose }) {
                         }}
                         onMouseEnter={() => setSelected(i)}
                       >
-                        <span style={{ fontSize: 18 }}>{LEVEL_EMOJI[u.level] || '👤'}</span>
+                        <span style={{ fontSize: 11, color: '#a855f7', fontWeight: 700 }}>{LEVEL_LABEL[u.level] || 'user'}</span>
                         <div style={{ flex: 1 }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>{u.username}</span>
                           {u.displayName !== u.username && (
@@ -211,7 +211,7 @@ export default function SearchModal({ onClose }) {
                           )}
                         </div>
                         {u.currentStreak > 0 && (
-                          <span style={{ fontSize: 11, color: '#f97316' }}>🔥 {u.currentStreak}j</span>
+                          <span style={{ fontSize: 11, color: '#f97316' }}>{u.currentStreak}j</span>
                         )}
                       </div>
                     );

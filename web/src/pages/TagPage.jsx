@@ -49,7 +49,7 @@ export default function TagPage({ tag }) {
       {trendingTags.length > 0 && (
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 12, color: '#64748b', marginBottom: 8, fontWeight: 600 }}>
-            🔥 Tags populaires
+            Tags populaires
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {trendingTags.map(t => (
@@ -86,7 +86,7 @@ export default function TagPage({ tag }) {
           textAlign: 'center', padding: '60px 20px',
           color: '#64748b', fontSize: 14,
         }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🏷</div>
+          <div style={{ fontSize: 14, color: '#64748b', marginBottom: 12 }}>--</div>
           <div style={{ color: '#f8fafc', fontWeight: 600, marginBottom: 6 }}>
             Aucun marché avec ce tag
           </div>

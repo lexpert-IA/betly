@@ -1,33 +1,35 @@
-import { useState, useEffect, useCallback, useRef, useContext } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { auth } from '../lib/firebase';
 
-// Re-export from useAuth for backward compat
+// Re-export for backward compat
 export { useUserId } from './useAuth';
 
-export function useApi(path, { interval = 0, params = {} } = {}) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const timerRef = useRef(null);
+async function getAuthHeader() {
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      return { Authorization: `Bearer ${token}` };
+    }
+  } catch {}
+  return {};
+}
 
-  // Get userId from localStorage session (or URL param fallback)
-  function getUserId() {
-    try {
-      const raw = localStorage.getItem('betly_user');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.userId) return parsed.userId;
-      }
-    } catch {}
-    return new URLSearchParams(window.location.search).get('userId') || '';
-  }
+export function useApi(path, { interval = 0, params = {} } = {}) {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const timerRef              = useRef(null);
 
   const fetch_ = useCallback(async (isFirstLoad = false) => {
+    if (!path) return;
     if (isFirstLoad) setLoading(true);
     try {
-      const userId = getUserId();
-      const qs = new URLSearchParams({ userId, ...params }).toString();
+      const authHeader = await getAuthHeader();
+      const qs  = new URLSearchParams(params).toString();
       const base = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${base}${path}?${qs}`);
+      const url  = qs ? `${base}${path}?${qs}` : `${base}${path}`;
+      const res  = await fetch(url, { headers: authHeader });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setData(await res.json());
       setError(null);

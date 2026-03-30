@@ -64,12 +64,9 @@ export default function Topbar({ walletDisabled = false }) {
     }}>
       {/* Logo */}
       <a href="/" style={{
-        textDecoration: 'none', fontSize: 18, fontWeight: 900,
-        background: 'linear-gradient(135deg, #a78bfa 0%, #60a5fa 100%)',
-        WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        backgroundClip: 'text', letterSpacing: '-0.5px', flexShrink: 0,
+        textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
       }}>
-        {isMobile ? 'B' : 'BETLY'}
+        <img src="/betly-logo.png" alt="BETLY" style={{ height: isMobile ? 28 : 32 }} />
       </a>
 
       {/* Nav — hidden on mobile (uses BottomNav instead) */}
@@ -126,30 +123,18 @@ export default function Topbar({ walletDisabled = false }) {
 
         {user ? (
           <>
-            {/* Balance pills — desktop only */}
-            {!isMobile && typeof user.balance === 'number' && (
-              <a href="/positions" style={{ display: 'flex', gap: 4, textDecoration: 'none' }}>
+            {/* En jeu pill — desktop only */}
+            {!isMobile && (user.lockedBalance || 0) > 0 && (
+              <a href="/positions" style={{ textDecoration: 'none' }}>
                 <div style={{
-                  padding: '4px 10px', borderRadius: '7px 0 0 7px',
-                  background: 'rgba(34,197,94,0.08)',
-                  border: '1px solid rgba(34,197,94,0.2)',
-                  borderRight: 'none',
-                  fontSize: 11, color: '#22c55e', fontWeight: 600,
+                  padding: '4px 10px', borderRadius: 7,
+                  background: 'rgba(245,158,11,0.08)',
+                  border: '1px solid rgba(245,158,11,0.2)',
+                  fontSize: 11, color: '#f59e0b', fontWeight: 600,
                   whiteSpace: 'nowrap',
                 }}>
-                  {(user.balance - (user.lockedBalance || 0)).toFixed(2)} USDC
+                  {(user.lockedBalance || 0).toFixed(2)} USDC en jeu
                 </div>
-                {(user.lockedBalance || 0) > 0 && (
-                  <div style={{
-                    padding: '4px 10px', borderRadius: '0 7px 7px 0',
-                    background: 'rgba(245,158,11,0.08)',
-                    border: '1px solid rgba(245,158,11,0.2)',
-                    fontSize: 11, color: '#f59e0b', fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {(user.lockedBalance || 0).toFixed(2)} en jeu
-                  </div>
-                )}
               </a>
             )}
 
@@ -229,7 +214,7 @@ export default function Topbar({ walletDisabled = false }) {
                           {user.username}
                         </div>
                         <div style={{ fontSize: 11, color: '#64748b' }}>
-                          {user.balance?.toFixed(2) || '0'} USDC
+                          {(user.lockedBalance || 0) > 0 ? `${(user.lockedBalance || 0).toFixed(2)} USDC en jeu` : 'Aucun pari actif'}
                         </div>
                       </div>
                     </div>

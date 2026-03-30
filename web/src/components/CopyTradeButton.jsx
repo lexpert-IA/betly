@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { toast } from './ToastManager';
+import { apiFetch } from '../lib/api';
 
 const API = import.meta.env.VITE_API_URL || '';
 
@@ -24,17 +25,14 @@ export default function CopyTradeButton({ marketId, side, marketTitle }) {
 
     setLoading(true);
     try {
-      const res = await fetch(
-        `${API}/api/markets/${marketId}/bet?userId=${encodeURIComponent(user.userId)}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ side, amount: amt }),
-        }
-      );
+      const res = await apiFetch(`/api/markets/${marketId}/bet`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ side, amount: amt }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
-      toast(`Trade copié ! ${side === 'YES' ? 'OUI' : 'NON'} $${amt} placé 🎯`, 'success');
+      toast(`Trade copié ! ${side === 'YES' ? 'OUI' : 'NON'} $${amt} placé`, 'success');
       setOpen(false);
       setAmount('10');
     } catch (err) {
@@ -58,7 +56,7 @@ export default function CopyTradeButton({ marketId, side, marketTitle }) {
         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.22)'; }}
         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.12)'; }}
       >
-        📋 Copier
+        Copier
       </button>
 
       {open && (
@@ -92,10 +90,10 @@ export default function CopyTradeButton({ marketId, side, marketTitle }) {
             }} />
 
             <div style={{ fontSize: 12, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
-              📋 Copier ce trade
+              Copier ce trade
             </div>
             <div style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
-              {side === 'YES' ? '🟢 OUI' : '🔴 NON'} ·{' '}
+              <span style={{ color: side === 'YES' ? '#22c55e' : '#ef4444', fontWeight: 700 }}>{side === 'YES' ? 'OUI' : 'NON'}</span>{' '}·{' '}
               {marketTitle ? marketTitle.slice(0, 40) + (marketTitle.length > 40 ? '…' : '') : `Marché ${marketId?.slice(0, 8)}`}
             </div>
 

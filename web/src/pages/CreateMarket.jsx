@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AiAnalysis from '../components/AiAnalysis';
 import { useUserId } from '../hooks/useApi';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { apiFetch } from '../lib/api';
 
 const TAG_SUGGESTIONS = {
   sport:     ['football', 'nba', 'tennis', 'euro2026', 'ligue1'],
@@ -10,14 +12,27 @@ const TAG_SUGGESTIONS = {
   autre:     ['ia', 'tech', 'science', 'startup', 'economie'],
 };
 
+const PLATFORMS = [
+  { key: 'twitter',   label: 'Twitter/X'  },
+  { key: 'youtube',   label: 'YouTube'    },
+  { key: 'tiktok',    label: 'TikTok'     },
+  { key: 'instagram', label: 'Instagram'  },
+];
+
 export default function CreateMarket() {
   const userId = useUserId();
+  const isMobile = useIsMobile();
   const [form, setForm] = useState({
     title: '',
     description: '',
     resolutionDate: '',
     minBet: 1,
     tags: [],
+    creatorMarket: false,
+    subjectHandle: '',
+    subjectPlatform: 'twitter',
+    subjectFollowers: '',
+    communityTag: '',
   });
   const [tagInput, setTagInput] = useState('');
   const [analysis, setAnalysis] = useState(null);
@@ -71,8 +86,7 @@ export default function CreateMarket() {
     setSubmitting(true);
     setSubmitResult(null);
     try {
-      const base = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${base}/api/markets?userId=${userId}`, {
+      const res = await apiFetch('/api/markets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
@@ -113,7 +127,7 @@ export default function CreateMarket() {
   };
 
   return (
-    <div style={{ maxWidth: '580px', margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: '580px', margin: '0 auto', padding: isMobile ? '16px 16px 100px' : '24px 16px' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#e2e2e8', marginBottom: '4px' }}>
           Créer un marché
@@ -135,7 +149,7 @@ export default function CreateMarket() {
             marginBottom: '20px',
           }}
         >
-          Ajoute <code style={{ background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: '3px' }}>?userId=TON_ID</code> dans l'URL pour créer un marché.
+          Connecte-toi pour soumettre un marché.
         </div>
       )}
 
@@ -281,6 +295,88 @@ export default function CreateMarket() {
           )}
         </div>
 
+        {/* Creator market toggle */}
+        <div style={{
+          border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10,
+          overflow: 'hidden',
+        }}>
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 14px', cursor: 'pointer',
+              background: form.creatorMarket ? 'rgba(124,58,237,0.1)' : 'transparent',
+            }}
+            onClick={() => setForm(f => ({ ...f, creatorMarket: !f.creatorMarket }))}
+          >
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                Marché Créateur
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                Lie ce marché à un compte social (Squeezie, Aya…)
+              </div>
+            </div>
+            <div style={{
+              width: 36, height: 20, borderRadius: 10, position: 'relative',
+              background: form.creatorMarket ? '#7c3aed' : 'rgba(255,255,255,0.1)',
+              transition: 'background .2s',
+              flexShrink: 0,
+            }}>
+              <div style={{
+                position: 'absolute', top: 2, left: form.creatorMarket ? 18 : 2,
+                width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                transition: 'left .2s',
+              }} />
+            </div>
+          </div>
+
+          {form.creatorMarket && (
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelStyle}>Handle du créateur</label>
+                  <input
+                    type="text"
+                    placeholder="@Squeezie"
+                    value={form.subjectHandle}
+                    onChange={e => setForm(f => ({ ...f, subjectHandle: e.target.value }))}
+                    style={{ ...inputStyle }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(167,139,250,0.5)'}
+                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Plateforme</label>
+                  <select
+                    value={form.subjectPlatform}
+                    onChange={e => setForm(f => ({ ...f, subjectPlatform: e.target.value }))}
+                    style={{ ...inputStyle, width: 'auto', colorScheme: 'dark' }}
+                  >
+                    {PLATFORMS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Tag communauté (optionnel)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: SqueezieFans"
+                  value={form.communityTag}
+                  onChange={e => setForm(f => ({ ...f, communityTag: e.target.value }))}
+                  style={{ ...inputStyle }}
+                  onFocus={e => e.target.style.borderColor = 'rgba(167,139,250,0.5)'}
+                  onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
+                />
+              </div>
+              {analysis?.selfMarketWarning && (
+                <div style={{ padding: '8px 12px', borderRadius: 7, background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', color: '#f59e0b', fontSize: 12 }}>
+                  Tu es le sujet de ce marché. Les parieurs verront que tu peux influencer le résultat.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Stake notice */}
         <div
           style={{
@@ -295,7 +391,7 @@ export default function CreateMarket() {
             gap: '8px',
           }}
         >
-          <span style={{ color: '#a78bfa', fontSize: '14px' }}>🔒</span>
+          <span style={{ color: '#a78bfa', fontSize: '14px', fontWeight: 700 }}>*</span>
           <span>
             <strong style={{ color: '#a78bfa' }}>5 USDC</strong> seront bloqués à la création du marché et retournés à la résolution.
           </span>

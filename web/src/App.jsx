@@ -112,14 +112,7 @@ function Footer({ isMobile }) {
       }}>
         {/* Left — brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{
-            fontSize: 15, fontWeight: 900,
-            background: 'linear-gradient(135deg, #a78bfa 0%, #60a5fa 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}>
-            BETLY
-          </span>
+          <img src="/betly-logo.png" alt="BETLY" style={{ height: 24 }} />
           <span style={{ fontSize: 12, color: '#334155' }}>
             © 2026 BETLY Labs Inc. — République du Panama
           </span>
