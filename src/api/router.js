@@ -14,7 +14,9 @@ const CreatorCommission = require('../../db/models/CreatorCommission');
 const CreatorVerification = require('../../db/models/CreatorVerification');
 const KnownCreator = require('../../db/models/KnownCreator');
 const Post = require('../../db/models/Post');
-const { analyzeMarket } = require('../agents/moderator');
+const AgentAccount = require('../../db/models/AgentAccount');
+const { analyzeMarket, preFilter } = require('../agents/moderator');
+const { postModerate } = require('../agents/postModerator');
 const { checkForFraud } = require('../agents/watcher');
 const { computeTrendingScores } = require('../agents/trending');
 const logger = require('../utils/logger');
@@ -822,7 +824,7 @@ router.post('/markets', geoblock, async (req, res) => {
         toxicity: analysis.toxicity,
         explanation: analysis.confidenceExplanation,
       },
-      status: analysis.decision === 'review' ? 'pending_review' : 'active',
+      status: 'pending_moderation',
       resolutionDate: new Date(resolutionDate),
       minBet: minBet || 1,
       flagged: analysis.decision === 'review',
@@ -836,10 +838,61 @@ router.post('/markets', geoblock, async (req, res) => {
     });
 
     await market.save();
-    logger.info(`Market created: ${market._id} by ${userId} — decision: ${analysis.decision}`);
-    res.status(201).json({ market, analysis });
+    logger.info(`Market created: ${market._id} by ${userId} — pre-analysis: ${analysis.decision} — status: pending_moderation`);
+
+    // Launch post-moderation async (don't block the response)
+    postModerate(market).then(result => {
+      logger.info(`Post-moderation complete: ${market._id} — final: ${result.final}${result.doubleChecked ? ' (double-checked)' : ''}`);
+    }).catch(err => {
+      logger.error(`Post-moderation failed: ${market._id} — ${err.message}`);
+    });
+
+    res.status(201).json({ market, analysis, moderationStatus: 'pending' });
   } catch (err) {
     logger.error(`POST /markets error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/markets/:id/moderation-status ─────────────────────────────────
+router.get('/markets/:id/moderation-status', async (req, res) => {
+  try {
+    const market = await Market.findById(req.params.id)
+      .select('status postModeration rejectionReason title')
+      .lean();
+    if (!market) return res.status(404).json({ error: 'Market not found' });
+
+    const status = market.status;
+    let moderationPhase = 'unknown';
+    let decision = null;
+    let reason = null;
+
+    if (status === 'pending_moderation') {
+      moderationPhase = 'validating'; // IA en train d'analyser
+    } else if (status === 'double_check') {
+      moderationPhase = 'double_check'; // 2ème passe IA
+      reason = market.postModeration?.reason;
+    } else if (status === 'active') {
+      moderationPhase = 'complete';
+      decision = 'approved';
+      reason = market.postModeration?.reason;
+    } else if (status === 'rejected') {
+      moderationPhase = 'complete';
+      decision = 'rejected';
+      reason = market.rejectionReason || market.postModeration?.reason;
+    } else if (status === 'pending_review') {
+      moderationPhase = 'manual_review';
+    }
+
+    res.json({
+      marketId: market._id,
+      status,
+      moderationPhase,
+      decision,
+      reason,
+      postModeration: market.postModeration || null,
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
@@ -3948,7 +4001,8 @@ router.get('/copy/leaderboard', async (req, res) => {
       const roi = Math.min((w.roi       || 0) / 300 * 100, 100);
       const exp = Math.min((w.totalTrades || 0) / 150 * 100, 100);
       const betlyScore = Math.round(wr * 0.45 + roi * 0.35 + exp * 0.20);
-      return { ...w, betlyScore, _rank: i + 1 };
+      const walletAddress = w.walletAddress || w.address || w.wallet || '';
+      return { ...w, walletAddress, betlyScore, _rank: i + 1 };
     });
 
     res.json({ wallets, source: 'polyfrench' });
@@ -4199,6 +4253,332 @@ router.get('/copy/stats', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── FIN COPY TRADE ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── AGENTS IA — Comptes agents autonomes ────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ── Middleware: resolve agent from X-Agent-Key header ─────────────────────────
+async function resolveAgent(req, res, next) {
+  const key = req.headers['x-agent-key'];
+  if (!key) return res.status(401).json({ error: 'X-Agent-Key header required' });
+  const agent = await AgentAccount.findOne({ apiKey: key });
+  if (!agent) return res.status(401).json({ error: 'Invalid agent key' });
+  if (agent.suspended) return res.status(403).json({ error: 'Agent suspended', reason: agent.suspendedReason });
+  agent.resetDailyIfNeeded();
+  agent.lastActiveAt = new Date();
+  req.agent = agent;
+  next();
+}
+
+// ── POST /api/agents/register ────────────────────────────────────────────────
+router.post('/agents/register', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(401).json({ error: 'userId required' });
+
+    const { agentName, strategy, isPublic, dailyBudget, maxBetSize, allowedCategories } = req.body;
+    if (!agentName || agentName.trim().length < 2) {
+      return res.status(400).json({ error: 'agentName required (min 2 chars)' });
+    }
+
+    // Max 5 agents per owner
+    const count = await AgentAccount.countDocuments({ ownerId: userId });
+    if (count >= 5) return res.status(400).json({ error: 'Maximum 5 agents per owner' });
+
+    // Get owner pseudo
+    const owner = await User.findOne(buildUserQuery(userId)).lean();
+    const ownerPseudo = owner?.username || owner?.displayName || userId.slice(0, 8);
+
+    const agentNumber = await AgentAccount.getNextNumber();
+    const apiKey = AgentAccount.generateApiKey();
+
+    const agent = new AgentAccount({
+      agentName: agentName.trim(),
+      ownerId: userId,
+      ownerPseudo: ownerPseudo,
+      agentNumber,
+      apiKey,
+      strategy: (strategy || '').slice(0, 500),
+      isPublic: isPublic !== false,
+      dailyBudget: Math.min(dailyBudget || 100, 10000),
+      maxBetSize: Math.min(maxBetSize || 50, 5000),
+      allowedCategories: Array.isArray(allowedCategories) ? allowedCategories.slice(0, 10) : [],
+      avatarColor: ['#7c3aed','#06b6d4','#f59e0b','#ec4899','#22c55e','#3b82f6','#ef4444'][agentNumber % 7],
+    });
+
+    await agent.save();
+    logger.info(`Agent registered: #${agentNumber} "${agentName}" by ${ownerPseudo}`);
+
+    res.status(201).json({
+      agent: {
+        _id: agent._id,
+        agentName: agent.agentName,
+        agentNumber: agent.agentNumber,
+        ownerPseudo: agent.ownerPseudo,
+        apiKey: agent.apiKey,
+        isPublic: agent.isPublic,
+      },
+      message: `Agent #${String(agentNumber).padStart(3, '0')} created. Save your API key — it won't be shown again.`,
+    });
+  } catch (err) {
+    logger.error(`POST /agents/register error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/agents/post — Agent publishes a post ───────────────────────────
+router.post('/agents/post', resolveAgent, async (req, res) => {
+  try {
+    const agent = req.agent;
+    if (!agent.canPost()) {
+      return res.status(429).json({ error: 'Rate limit: max 5 posts/hour' });
+    }
+
+    const { text, marketId } = req.body;
+    if (!text || text.trim().length < 2) return res.status(400).json({ error: 'text required' });
+    if (text.length > 500) return res.status(400).json({ error: 'text max 500 chars' });
+
+    // Pre-filter
+    const filter = preFilter(text, '');
+    if (filter.blocked) {
+      agent.warningCount += 1;
+      if (agent.warningCount >= 5) {
+        agent.suspended = true;
+        agent.suspendedReason = 'Trop de contenus rejetés par la modération';
+      }
+      await agent.save();
+      return res.status(422).json({ error: 'Content blocked by moderation', reason: filter.reason });
+    }
+
+    // AI moderation (stricter for agents: toxicity > 30 = rejected)
+    const analysis = await analyzeMarket(text, '', {});
+    if (analysis.toxicity > 30) {
+      agent.warningCount += 1;
+      if (agent.warningCount >= 5) {
+        agent.suspended = true;
+        agent.suspendedReason = 'Contenus répétés avec toxicité élevée';
+      }
+      await agent.save();
+      return res.status(422).json({ error: 'Content rejected: toxicity too high', toxicity: analysis.toxicity });
+    }
+
+    const post = new Post({
+      userId: `agent:${agent._id}`,
+      username: agent.agentName.toLowerCase().replace(/\s+/g, '_'),
+      displayName: agent.agentName,
+      avatarColor: agent.avatarColor,
+      verified: true,
+      text: text.trim(),
+      marketId: marketId || null,
+      isAgent: true,
+      agentId: agent._id,
+      agentOwner: agent.ownerPseudo,
+      agentNumber: agent.agentNumber,
+    });
+
+    await post.save();
+    agent.postsToday += 1;
+    agent.totalPosts += 1;
+    await agent.save();
+
+    logger.info(`Agent post: #${agent.agentNumber} "${agent.agentName}" — "${text.slice(0, 50)}..."`);
+    res.status(201).json({ post });
+  } catch (err) {
+    logger.error(`POST /agents/post error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/agents/bet — Agent places a bet ───────────────────────────────
+router.post('/agents/bet', resolveAgent, async (req, res) => {
+  try {
+    const agent = req.agent;
+    if (!agent.canBet()) return res.status(429).json({ error: 'Rate limit: max 10 bets/hour' });
+
+    const { marketId, side, amount } = req.body;
+    if (!marketId) return res.status(400).json({ error: 'marketId required' });
+    if (!side || !['YES', 'NO'].includes(side)) return res.status(400).json({ error: 'side must be YES or NO' });
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) return res.status(400).json({ error: 'amount must be > 0' });
+    if (amt > agent.maxBetSize) return res.status(400).json({ error: `amount exceeds maxBetSize (${agent.maxBetSize})` });
+    if (!agent.canSpend(amt)) return res.status(400).json({ error: `daily budget exceeded (${agent.dailyBudget})` });
+
+    const market = await Market.findById(marketId);
+    if (!market) return res.status(404).json({ error: 'Market not found' });
+    if (market.status !== 'active') return res.status(400).json({ error: 'Market not active' });
+
+    // Anti-manipulation: agent can't bet on markets by same owner's agents
+    if (market.creatorId?.startsWith('agent:')) {
+      const creatorAgent = await AgentAccount.findById(market.creatorId.replace('agent:', ''));
+      if (creatorAgent && creatorAgent.ownerId === agent.ownerId) {
+        return res.status(403).json({ error: 'Cannot bet on markets created by agents of the same owner' });
+      }
+    }
+
+    // Category check
+    if (agent.allowedCategories.length > 0 && !agent.allowedCategories.includes(market.category)) {
+      return res.status(403).json({ error: `Agent not allowed to bet on category: ${market.category}` });
+    }
+
+    // Position limit: 10% of total pool
+    const totalPool = (market.totalYes || 0) + (market.totalNo || 0);
+    if (totalPool > 0 && amt > totalPool * 0.10) {
+      return res.status(400).json({ error: 'Position limit: max 10% of total pool' });
+    }
+
+    // Place the bet
+    const bet = new Bet({
+      marketId,
+      oddsAtBet: side === 'YES'
+        ? (market.totalYes || 0) / ((market.totalYes || 0) + (market.totalNo || 0) || 1)
+        : (market.totalNo || 0) / ((market.totalYes || 0) + (market.totalNo || 0) || 1),
+      userId: `agent:${agent._id}`,
+      side,
+      amount: amt,
+      status: 'active',
+      isAgent: true,
+    });
+    await bet.save();
+
+    // Update market totals
+    if (side === 'YES') market.totalYes = (market.totalYes || 0) + amt;
+    else market.totalNo = (market.totalNo || 0) + amt;
+    await market.save();
+
+    // Update agent stats
+    agent.betsToday += 1;
+    agent.spentToday += amt;
+    agent.totalBets += 1;
+    agent.totalVolume += amt;
+    await agent.save();
+
+    logger.info(`Agent bet: #${agent.agentNumber} "${agent.agentName}" — ${side} $${amt} on ${marketId}`);
+    res.status(201).json({ bet, agent: { betsToday: agent.betsToday, spentToday: agent.spentToday } });
+  } catch (err) {
+    logger.error(`POST /agents/bet error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /api/agents/create-market — Agent creates a market ──────────────────
+router.post('/agents/create-market', resolveAgent, async (req, res) => {
+  try {
+    const agent = req.agent;
+    if (!agent.canCreateMarket()) return res.status(429).json({ error: 'Rate limit: max 3 markets/day' });
+
+    const { title, description, resolutionDate, tags, category } = req.body;
+    if (!title || title.length < 10) return res.status(400).json({ error: 'title required (min 10 chars)' });
+    if (!resolutionDate) return res.status(400).json({ error: 'resolutionDate required' });
+
+    // Full moderation pipeline
+    const filter = preFilter(title, description || '');
+    if (filter.blocked) {
+      agent.warningCount += 1;
+      await agent.save();
+      return res.status(422).json({ error: 'Content blocked', reason: filter.reason });
+    }
+
+    const analysis = await analyzeMarket(title, description || '', {});
+    if (analysis.decision === 'rejected') {
+      return res.status(422).json({ error: 'Market rejected by moderation', analysis });
+    }
+
+    const cleanTags = Array.isArray(tags)
+      ? [...new Set(tags.map(t => t.toString().toLowerCase().trim().replace(/[^a-z0-9_]/g, '')).filter(t => t.length >= 2))].slice(0, 3)
+      : [];
+
+    const market = new Market({
+      creatorId: `agent:${agent._id}`,
+      title,
+      description: description || '',
+      tags: cleanTags,
+      category: analysis.category || category || 'autre',
+      oracleLevel: analysis.oracleLevel || 2,
+      confidenceScore: analysis.confidenceScore || 0,
+      confidenceDetails: {
+        verifiability: analysis.verifiability,
+        toxicity: analysis.toxicity,
+        explanation: analysis.confidenceExplanation,
+      },
+      status: 'pending_moderation',
+      resolutionDate: new Date(resolutionDate),
+      minBet: 1,
+    });
+
+    await market.save();
+    agent.marketsToday += 1;
+    await agent.save();
+
+    // Async post-moderation
+    postModerate(market).then(r => {
+      logger.info(`Agent market post-moderation: ${market._id} — ${r.final}`);
+    }).catch(() => {});
+
+    logger.info(`Agent market: #${agent.agentNumber} "${agent.agentName}" — "${title.slice(0, 50)}"`);
+    res.status(201).json({ market, moderationStatus: 'pending' });
+  } catch (err) {
+    logger.error(`POST /agents/create-market error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/agents — List public agents ─────────────────────────────────────
+router.get('/agents', async (req, res) => {
+  try {
+    const agents = await AgentAccount.find({ isPublic: true, suspended: false })
+      .select('-apiKey')
+      .sort({ agentNumber: 1 })
+      .lean();
+    res.json({ agents });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/agents/leaderboard — Ranked agents ──────────────────────────────
+router.get('/agents/leaderboard', async (req, res) => {
+  try {
+    const agents = await AgentAccount.find({ isPublic: true, suspended: false, totalBets: { $gt: 0 } })
+      .select('-apiKey')
+      .sort({ roi: -1, winRate: -1 })
+      .limit(50)
+      .lean();
+    res.json({ agents });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET /api/agents/:id/stats — Public agent stats ───────────────────────────
+router.get('/agents/:id/stats', async (req, res) => {
+  try {
+    const agent = await AgentAccount.findById(req.params.id).select('-apiKey').lean();
+    if (!agent) return res.status(404).json({ error: 'Agent not found' });
+    if (!agent.isPublic) return res.status(403).json({ error: 'Agent profile is private' });
+
+    // Recent bets
+    const recentBets = await Bet.find({ userId: `agent:${agent._id}` })
+      .sort({ createdAt: -1 }).limit(20).lean();
+
+    // Recent posts
+    const recentPosts = await Post.find({ userId: `agent:${agent._id}` })
+      .sort({ createdAt: -1 }).limit(10).lean();
+
+    res.json({
+      agent,
+      recentBets,
+      recentPosts,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── FIN AGENTS IA ────────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 
 module.exports = router;

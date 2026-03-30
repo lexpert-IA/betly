@@ -299,15 +299,15 @@ function SetupBanner({ user, config, onActivate }) {
   if (!hasWallet) {
     return (
       <div style={{
-        ...card, padding: '32px 28px', textAlign: 'center', marginBottom: 24,
+        ...card, padding: '20px 24px', textAlign: 'center', marginBottom: 20,
         border: `1px solid rgba(124,58,237,0.25)`,
         background: 'linear-gradient(135deg, rgba(124,58,237,0.06), rgba(168,85,247,0.03))',
       }}>
-        <div style={{ fontSize: 36, marginBottom: 14 }}>👛</div>
-        <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 8 }}>
+        <div style={{ fontSize: 26, marginBottom: 10 }}>👛</div>
+        <div style={{ fontSize: 15, fontWeight: 800, color: C.text, marginBottom: 6 }}>
           Configure ton wallet d'abord
         </div>
-        <div style={{ fontSize: 13, color: C.muted, marginBottom: 20, lineHeight: 1.7 }}>
+        <div style={{ fontSize: 13, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
           Pour copier des trades, tu as besoin d'un wallet Polygon avec des USDC.
         </div>
         <a href="/account?tab=deposit" style={{
@@ -970,7 +970,7 @@ export default function BetlyCopy() {
   ];
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '16px 12px 80px' : '28px 20px 48px' }}>
+    <div style={{ maxWidth: 1160, margin: '0 auto', padding: isMobile ? '16px 12px 80px' : '28px 20px 48px' }}>
       <style>{`
         @keyframes sk          { 0%,100%{opacity:.4}50%{opacity:.8} }
         @keyframes pulse-dot   { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.6)}50%{box-shadow:0 0 0 5px rgba(34,197,94,0)} }
@@ -1008,7 +1008,7 @@ export default function BetlyCopy() {
       {/* Tabs */}
       <div style={{
         display: 'flex', gap: 2, marginBottom: 20, overflowX: 'auto',
-        borderBottom: `1px solid ${C.border}`, paddingBottom: 0,
+        borderBottom: `1px solid ${C.border}`,
         scrollbarWidth: 'none',
       }}>
         {TABS.map(t => (
@@ -1018,6 +1018,7 @@ export default function BetlyCopy() {
             color: tab === t.key ? C.purpleL : C.muted,
             fontSize: isMobile ? 11 : 13, fontWeight: tab === t.key ? 700 : 400,
             borderBottom: tab === t.key ? `2px solid ${C.purpleL}` : '2px solid transparent',
+            marginBottom: -1,
             transition: 'all .15s', whiteSpace: 'nowrap',
             display: 'flex', alignItems: 'center', gap: 5,
           }}>
@@ -1064,8 +1065,8 @@ export default function BetlyCopy() {
           )}
           {tab === 'trades'   && <TabTrades />}
           {tab === 'alerts'   && <TabAlerts config={config} />}
-          {tab === 'settings' && config && (
-            <TabSettings config={config} onConfigUpdate={setConfig} />
+          {tab === 'settings' && (
+            <TabSettings config={config || {}} onConfigUpdate={setConfig} />
           )}
         </>
       )}
