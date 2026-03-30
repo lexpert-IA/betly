@@ -5,7 +5,11 @@ contracts/artifacts/
 contracts/cache/
 contracts/.env
 .env
+.env.*
+.env.prod
+.env.local
+.env*.local
 *.log
 .DS_Store
 .vercel
-.env*.local
+backups/
