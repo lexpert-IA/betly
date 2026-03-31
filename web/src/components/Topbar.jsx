@@ -64,9 +64,16 @@ export default function Topbar({ walletDisabled = false }) {
     }}>
       {/* Logo */}
       <a href="/" style={{
-        textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0,
+        textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0,
       }}>
-        <img src="/betly-logo.png" alt="BETLY" style={{ height: isMobile ? 28 : 32 }} />
+        <img src="/betly-icon.png" alt="BETLY" style={{ height: isMobile ? 28 : 32, borderRadius: 7 }} />
+        {!isMobile && (
+          <span style={{
+            fontWeight: 900, fontSize: 15, letterSpacing: 2,
+            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          }}>BETLY</span>
+        )}
       </a>
 
       {/* Nav — hidden on mobile (uses BottomNav instead) */}

@@ -42,12 +42,12 @@ async function distribute(market) {
     const message = buildMessage(market);
 
     await axios.post(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      `https://api.telegram.org/bot${botToken}/sendPhoto`,
       {
         chat_id: channelId,
-        text: message,
+        photo: `${BETLY_URL}/betly-icon.png`,
+        caption: message,
         parse_mode: 'Markdown',
-        disable_web_page_preview: false,
       },
       { timeout: 10000 }
     );

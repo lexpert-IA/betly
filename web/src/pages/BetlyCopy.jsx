@@ -979,13 +979,16 @@ export default function BetlyCopy() {
 
       {/* Header */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: C.text, margin: '0 0 4px' }}>
-            BETLY <span style={{ background: `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Copy</span>
-          </h1>
-          <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
-            Cockpit copy-trading Polymarket · Données en temps réel
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/betly-icon.png" alt="BETLY" style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: 10, flexShrink: 0 }} />
+          <div>
+            <h1 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: C.text, margin: '0 0 4px' }}>
+              BETLY <span style={{ background: `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Copy</span>
+            </h1>
+            <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
+              Cockpit copy-trading Polymarket · Données en temps réel
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {config?.paperMode && <Badge color="#60a5fa">📝 Paper mode</Badge>}
