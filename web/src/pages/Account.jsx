@@ -74,8 +74,8 @@ function StatBox({ label, value, color, sub }) {
   );
 }
 
-// ── Deposit tab — Single window with Crypto/Euros tabs ───────────────────────
-function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
+// ── Deposit MODAL — Polymarket-style popup ───────────────────────────────────
+function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCreated }) {
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState(null);
@@ -118,7 +118,7 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
       });
       const data = await res.json();
       setCheckResult(data);
-      if (data.deposited > 0) refreshUser();
+      if (data.deposited > 0 && onWalletCreated) onWalletCreated();
     } catch (e) {
       setCheckResult({ error: e.message });
     } finally {
@@ -133,10 +133,59 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
     divider: { height: 1, background: 'rgba(255,255,255,0.05)', margin: '0' },
   };
 
+  if (!open) return null;
+
+  const overlayStyle = {
+    position: 'fixed', inset: 0, zIndex: 9999,
+    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 16,
+  };
+
+  const modalStyle = {
+    background: '#111118', borderRadius: 20,
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+    width: '100%', maxWidth: 480, maxHeight: '90vh',
+    overflow: 'auto', position: 'relative',
+  };
+
+  const headerBar = (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>Deposit</div>
+        {typeof betlyBalance === 'number' && (
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+            Solde Betly: <strong style={{ color: '#a855f7' }}>${betlyBalance.toFixed(2)}</strong>
+          </div>
+        )}
+      </div>
+      <button
+        onClick={onClose}
+        style={{
+          width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+          background: 'rgba(255,255,255,0.05)', color: '#64748b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 18, transition: 'all .15s',
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#f8fafc'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#64748b'; }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+
   // ── No wallet → setup flow ──
   if (!address) {
     return (
-      <div style={{ maxWidth: 600, margin: '0 auto', paddingTop: 32 }}>
+      <div style={overlayStyle} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={modalStyle}>
+        {headerBar}
+        <div style={{ padding: 24 }}>
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
@@ -241,28 +290,25 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
             </svg>
           </div>
         </div>
+        </div>
+      </div>
       </div>
     );
   }
 
-  // ── Wallet active — single deposit window ──
+  // ── Wallet active — modal deposit window ──
   return (
-    <div style={{ maxWidth: 560, margin: '0 auto', paddingTop: 8 }}>
-
-      {/* ═══ SINGLE DEPOSIT WINDOW ═══ */}
-      <div style={{
-        background: '#111118', borderRadius: 18,
-        border: '1px solid rgba(255,255,255,0.06)',
-        overflow: 'hidden',
-      }}>
+    <div style={overlayStyle} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={modalStyle}>
+      {headerBar}
 
         {/* ── Top: Balance + Address + Warning ── */}
-        <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           {/* Balance row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>Solde on-chain</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: '#f8fafc', lineHeight: 1 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', lineHeight: 1 }}>
                 ${balance !== null ? parseFloat(balance).toFixed(2) : '0.00'}
               </div>
               {balance !== null && (nativeBalance > 0 || bridgedBalance > 0) && (
@@ -598,13 +644,13 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
             )}
           </div>
         )}
-      </div>
+    </div>
     </div>
   );
 }
 
-// ── Withdraw tab — Polymarket-inspired ───────────────────────────────────────
-function WithdrawTab({ address, betlyBalance, userId }) {
+// ── Withdraw MODAL — Polymarket-style popup ──────────────────────────────────
+function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
   const [dest, setDest] = useState('');
   const [amount, setAmount] = useState('');
   const [status, setStatus] = useState(null);
@@ -639,21 +685,48 @@ function WithdrawTab({ address, betlyBalance, userId }) {
     if (val > 0) setAmount(String(val));
   }
 
+  if (!open) return null;
+
   return (
-    <div style={{ maxWidth: 520, margin: '0 auto', paddingTop: 8 }}>
-      <div style={{
-        background: '#111118', borderRadius: 16,
-        border: '1px solid rgba(255,255,255,0.06)',
-        overflow: 'hidden',
-      }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 16,
+    }} onClick={e => e.target === e.currentTarget && onClose()}>
+    <div style={{
+      background: '#111118', borderRadius: 20,
+      border: '1px solid rgba(255,255,255,0.08)',
+      boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+      width: '100%', maxWidth: 480, maxHeight: '90vh',
+      overflow: 'auto', position: 'relative',
+    }}>
         {/* Header */}
-        <div style={{ padding: '24px 24px 0' }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#f8fafc', marginBottom: 4 }}>
-            Retirer des USDC
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>
+              Retirer des USDC
+            </div>
+            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+              Envoie tes USDC vers n'importe quelle adresse Polygon
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: '#64748b' }}>
-            Envoie tes USDC vers n'importe quelle adresse Polygon
-          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: 'rgba(255,255,255,0.05)', color: '#64748b',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#f8fafc'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#64748b'; }}
+          >
+            ✕
+          </button>
         </div>
 
         {/* Available balance */}
@@ -891,9 +964,9 @@ export default function Account() {
   const { primaryWallet } = useDynamicContext();
   const walletAddress = primaryWallet?.address || session?.walletAddress;
 
-  // Tab from URL param
   const urlTab = new URLSearchParams(window.location.search).get('tab');
-  const [activeTab, setActiveTab] = useState(urlTab || 'stats');
+  const [depositOpen, setDepositOpen] = useState(urlTab === 'deposit');
+  const [withdrawOpen, setWithdrawOpen] = useState(urlTab === 'withdraw');
 
   const user = data?.user;
   const recentBets = data?.recentBets || [];
@@ -1008,31 +1081,38 @@ export default function Account() {
         </div>
       </div>
 
-      {/* Tab switcher */}
-      <div style={{
-        display: 'flex', gap: 4, marginBottom: 20,
-        background: '#111118', border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 10, padding: 4,
-      }}>
-        {[
-          { key: 'stats', label: 'Stats' },
-          { key: 'deposit', label: 'Déposer' },
-          { key: 'withdraw', label: 'Retirer' },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            style={{
-              flex: 1, padding: '7px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
-              background: activeTab === key ? 'rgba(124,58,237,0.2)' : 'transparent',
-              color: activeTab === key ? '#a855f7' : '#64748b',
-              fontSize: 12, fontWeight: activeTab === key ? 700 : 400,
-              transition: 'all .15s',
-            }}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Deposit / Withdraw buttons */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <button
+          onClick={() => setDepositOpen(true)}
+          style={{
+            flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            color: '#fff', fontSize: 14, fontWeight: 700,
+            boxShadow: '0 4px 20px rgba(124,58,237,0.3)',
+            transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 6px 28px rgba(124,58,237,0.45)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 4px 20px rgba(124,58,237,0.3)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="m5 12 7-7 7 7"/></svg>
+          Déposer
+        </button>
+        <button
+          onClick={() => setWithdrawOpen(true)}
+          style={{
+            flex: 1, padding: '12px 0', borderRadius: 12, cursor: 'pointer',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#94a3b8', fontSize: 14, fontWeight: 700,
+            transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; e.currentTarget.style.color = '#c4b5fd'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="m5 12 7 7 7-7"/></svg>
+          Retirer
+        </button>
       </div>
 
       {/* Balance breakdown bar */}
@@ -1057,15 +1137,12 @@ export default function Account() {
         </div>
       )}
 
-      {/* Deposit / Withdraw tabs */}
-      {activeTab === 'deposit' && (
-        <DepositTab address={walletAddress} userId={session?.userId} betlyBalance={user?.balance} onWalletCreated={refreshUser} />
-      )}
-      {activeTab === 'withdraw' && (
-        <WithdrawTab address={walletAddress} betlyBalance={user?.balance} userId={session?.userId} />
-      )}
+      {/* Deposit / Withdraw MODALS */}
+      <DepositModal open={depositOpen} onClose={() => setDepositOpen(false)} address={walletAddress} userId={session?.userId} betlyBalance={user?.balance} onWalletCreated={refreshUser} />
+      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} address={walletAddress} betlyBalance={user?.balance} userId={session?.userId} />
 
-      {activeTab === 'stats' && <>
+      {/* Stats — always visible */}
+      <>
 
       {/* Level progression bar */}
       {user && (
@@ -1195,7 +1272,7 @@ export default function Account() {
         </>
       )}
 
-      </>}
+      </>
     </div>
   );
 }
