@@ -13,3 +13,4 @@ contracts/.env
 .DS_Store
 .vercel
 backups/
+web/dist/
