@@ -81,7 +81,7 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
   const [checkResult, setCheckResult] = useState(null);
   const [creatingWallet, setCreatingWallet] = useState(false);
   const [createError, setCreateError] = useState('');
-  const { balance, refetch } = useUsdcBalance(address, 10000);
+  const { balance, nativeBalance, bridgedBalance, refetch } = useUsdcBalance(address, 10000);
 
   const API = import.meta.env.VITE_API_URL || '';
 
@@ -345,7 +345,48 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
         {externalBtn('https://www.binance.com/fr/buy-sell-crypto', 'Ouvrir Binance', '#b8860b')}
       </div>
 
-      {/* ══ Option 3 — Déjà des USDC ══ */}
+      {/* ══ Option 3 — Bridge depuis une autre chaîne ══ */}
+      <div style={card}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16,
+            }}>🌉</div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 3 — Bridge depuis une autre chaîne</div>
+              <div style={{ fontSize: 10, color: '#64748b' }}>Ethereum, Arbitrum, Base, Optimism…</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {badge('#3b82f6', 'rgba(59,130,246,0.1)', '2–5 min')}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          {[
+            'Tu as des USDC ou ETH sur une autre chaîne (Ethereum, Arbitrum, Base…)',
+            'Utilise Jumper Exchange pour bridge vers Polygon en 1 clic',
+            'Colle ton adresse BETLY comme destination',
+          ].map((step, i) => (
+            <div key={i} style={stepRow}>
+              <div style={stepNum}>{i + 1}</div>
+              <div style={stepText}>{step}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {address
+            ? externalBtn(`https://jumper.exchange/?toChain=137&toToken=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359&toAddress=${address}`, 'Ouvrir Jumper Exchange', '#3b82f6')
+            : externalBtn('https://jumper.exchange/?toChain=137&toToken=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', 'Ouvrir Jumper Exchange', '#3b82f6')
+          }
+        </div>
+      </div>
+
+      {/* ══ Option 4 — Envoi direct USDC Polygon ══ */}
       <div style={{ ...card, border: '1px solid rgba(124,58,237,0.25)', background: 'rgba(124,58,237,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -354,29 +395,43 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
               background: 'linear-gradient(135deg,#7c3aed,#a855f7)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 16,
-            }}>D</div>
+            }}>⚡</div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 3 — J'ai déjà des USDC</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Envoi direct depuis ton wallet</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 4 — Envoi direct</div>
+              <div style={{ fontSize: 10, color: '#64748b' }}>USDC ou USDC.e sur Polygon</div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 5 }}>
             {badge('#22c55e', 'rgba(34,197,94,0.1)', '✓ Gratuit')}
-            {badge('#a855f7', 'rgba(168,85,247,0.1)', '< 2 min')}
+            {badge('#a855f7', 'rgba(168,85,247,0.1)', '< 1 min')}
           </div>
         </div>
 
-        {/* Warning réseau */}
+        {/* Tokens acceptés */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '9px 12px', borderRadius: 8, marginBottom: 16,
-          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap',
         }}>
-          <span style={{ fontSize: 14, color: '#f87171', fontWeight: 700 }}>!</span>
-          <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>
-            Envoie UNIQUEMENT des USDC sur le réseau <strong>Polygon</strong>.
-            Autre réseau = fonds perdus.
-          </span>
+          <div style={{
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+            background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
+            color: '#22c55e', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{ fontSize: 8 }}>●</span> USDC (native)
+          </div>
+          <div style={{
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+            background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)',
+            color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            <span style={{ fontSize: 8 }}>●</span> USDC.e (bridged)
+          </div>
+          <div style={{
+            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
+            background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
+            color: '#a855f7', display: 'flex', alignItems: 'center', gap: 5,
+          }}>
+            Réseau : Polygon uniquement
+          </div>
         </div>
 
         {/* QR Code */}
@@ -415,18 +470,28 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
 
         {/* On-chain balance */}
         <div style={{
-          padding: '12px 14px', borderRadius: 10,
+          padding: '14px 16px', borderRadius: 10,
           background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.15)',
           marginBottom: 12,
         }}>
-          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Balance USDC on-chain · Polygon</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: '#a855f7' }}>
+          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Balance on-chain · Polygon</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#a855f7', marginBottom: 6 }}>
             {balance !== null ? `${parseFloat(balance).toFixed(2)} USDC` : '—'}
           </div>
-          <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
-            Polling toutes les 10s ·{' '}
+          {balance !== null && (nativeBalance > 0 || bridgedBalance > 0) && (
+            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#64748b' }}>
+              {nativeBalance > 0 && (
+                <span><span style={{ color: '#22c55e', fontWeight: 600 }}>{nativeBalance.toFixed(2)}</span> USDC</span>
+              )}
+              {bridgedBalance > 0 && (
+                <span><span style={{ color: '#60a5fa', fontWeight: 600 }}>{bridgedBalance.toFixed(2)}</span> USDC.e</span>
+              )}
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
+            Mise à jour auto ·{' '}
             <button onClick={refetch} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontSize: 10, padding: 0, fontWeight: 600 }}>
-              Forcer
+              Actualiser
             </button>
           </div>
         </div>
