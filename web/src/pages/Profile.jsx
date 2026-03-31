@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
 import { apiFetch } from '../lib/api';
 import ShareButton from '../components/ShareButton';
+import BetlyLoader from '../components/BetlyLoader';
 
 function StatBox({ label, value, color }) {
   return (
@@ -70,9 +71,7 @@ export default function Profile({ profileId }) {
       </a>
 
       {loading && (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6060a0', fontSize: '13px' }}>
-          Chargement…
-        </div>
+        <BetlyLoader size={100} text="Chargement du profil..." />
       )}
 
       {error && (

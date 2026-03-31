@@ -17,6 +17,7 @@ import { useMarketOnChain } from '../hooks/useMarketOnChain';
 import { useAccount } from 'wagmi';
 import { useDynamicContext } from '@dynamic-labs/sdk-react-core';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { BetlyLoaderFullPage } from '../components/BetlyLoader';
 
 // ── Share Button ──────────────────────────────────────────────────────────────
 function ShareButton({ market, yes, volume }) {
@@ -1273,16 +1274,7 @@ export default function MarketDetail({ marketId }) {
   } : null;
 
   if (loading) {
-    return (
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 16px' }}>
-        <a href="/" style={{ color: '#a78bfa', fontSize: 13, textDecoration: 'none' }}>← Retour au feed</a>
-        <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {[1,2,3].map(i => (
-            <div key={i} style={{ height: i === 1 ? 80 : 40, borderRadius: 10, background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s infinite' }} />
-          ))}
-        </div>
-      </div>
-    );
+    return <BetlyLoaderFullPage text="Chargement du marché..." />;
   }
 
   if (error || !market) {

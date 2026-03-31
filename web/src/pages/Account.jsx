@@ -8,6 +8,7 @@ import { computeAvatarColor } from '../hooks/useAuth';
 import CopyTradeButton from '../components/CopyTradeButton';
 import ShareButton from '../components/ShareButton';
 import { apiFetch } from '../lib/api';
+import BetlyLoader from '../components/BetlyLoader';
 
 // ── Level config ──────────────────────────────────────────────────────────────
 const LEVELS = {
@@ -895,7 +896,7 @@ export default function Account() {
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#6060a0', fontSize: 13 }}>Chargement...</div>
+        <BetlyLoader size={90} text="Chargement du compte..." />
       ) : (
         <>
           {/* Stats grid */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { apiFetch } from '../lib/api';
+import BetlyLoader from './BetlyLoader';
 import {
   Heart, ThumbsDown, Star, BarChart3, Send, Loader2,
   Share, MoreHorizontal, Image, Smile, MapPin, ChartBar,
@@ -545,10 +546,7 @@ export default function SocialFeed({ isMobile }) {
 
       {/* Posts */}
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center' }}>
-          <Loader2 size={24} color="#7c3aed" style={{ animation: 'spin 1s linear infinite' }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </div>
+        <BetlyLoader size={80} text="Chargement du feed..." />
       ) : filtered.length === 0 ? (
         <div style={{ padding: '60px 20px', textAlign: 'center', color: '#536471' }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 8 }}>

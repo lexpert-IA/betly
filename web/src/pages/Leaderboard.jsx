@@ -3,6 +3,7 @@ import { useApi } from '../hooks/useApi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../hooks/useAuth';
 import { Bot, Copy } from 'lucide-react';
+import BetlyLoader from '../components/BetlyLoader';
 
 const RANK = (i) => i === 0 ? '#1' : i === 1 ? '#2' : i === 2 ? '#3' : String(i + 1);
 
@@ -215,9 +216,7 @@ export default function Leaderboard() {
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6060a0', fontSize: '13px' }}>
-          Chargement...
-        </div>
+        <BetlyLoader size={100} text="Chargement du classement..." />
       ) : (
         <div style={{
           background: '#111118',

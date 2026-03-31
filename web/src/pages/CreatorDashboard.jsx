@@ -7,6 +7,7 @@ import {
   BarChart2, CheckCircle, Clock, Share2, Star,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import BetlyLoader from '../components/BetlyLoader';
 
 const TIER_INFO = {
   starter: { label: 'Starter',  color: '#64748b', rate: '3%',  next: 'Creator', nextVolume: 1000  },
@@ -151,7 +152,7 @@ export default function CreatorDashboard() {
       </div>
 
       {loading && (
-        <div style={{ padding: 48, textAlign: 'center', color: '#64748b', fontSize: 13 }}>Chargement…</div>
+        <BetlyLoader size={90} text="Chargement du dashboard..." />
       )}
 
       {!loading && activeTab === 'stats' && data && (

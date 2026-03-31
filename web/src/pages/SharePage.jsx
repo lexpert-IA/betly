@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import BetShareCard from '../components/BetShareCard';
+import BetlyLoader from '../components/BetlyLoader';
 
 const BASE = import.meta.env.VITE_API_URL || '';
 
@@ -45,9 +46,7 @@ export default function SharePage({ betId }) {
   }, [betId]);
 
   if (loading) return (
-    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ fontSize: 13, color: '#64748b' }}>Chargement…</div>
-    </div>
+    <BetlyLoader size={100} text="Chargement du pari..." style={{ minHeight: '60vh' }} />
   );
 
   if (error || !data) return (
