@@ -132,7 +132,7 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 0,
-      position: 'sticky', top: 68, maxHeight: 'calc(100vh - 84px)',
+      position: 'sticky', top: 80, maxHeight: 'calc(100vh - 96px)',
       overflowY: 'auto', overflowX: 'hidden',
       borderRadius: 16,
       border: '1px solid rgba(255,255,255,0.06)',
@@ -144,10 +144,10 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
       <div style={{
         position: 'sticky', top: 0, zIndex: 5,
         background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(12px)',
-        padding: '18px 18px 14px',
+        padding: '20px 18px 16px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BarChart3 size={18} color="#a855f7" strokeWidth={2.5} />
             <span style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>Marchés</span>
@@ -166,7 +166,7 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
         </div>
 
         {/* Feed tabs */}
-        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
           {[
             { key: 'global',   label: 'Global',   Icon: Globe },
             { key: 'pour-toi', label: 'Pour toi', Icon: Star  },
@@ -412,7 +412,7 @@ export default function Feed() {
   // ── Desktop layout: 2 columns ──────────────────────────────────────────────
   return (
     <div style={{
-      maxWidth: 1280, margin: '0 auto', padding: '20px 24px',
+      maxWidth: 1280, margin: '0 auto', padding: '28px 24px',
       position: 'relative', zIndex: 1,
       display: 'grid',
       gridTemplateColumns: '1fr 420px',

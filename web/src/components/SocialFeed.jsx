@@ -551,13 +551,13 @@ export default function SocialFeed({ isMobile }) {
       {/* Sort tabs (sticky below topbar) */}
       <div style={{
         position: 'sticky', top: 52, zIndex: 10,
-        background: 'rgba(10,10,15,0.92)', backdropFilter: 'blur(12px)',
+        background: 'rgba(10,10,15,0.95)', backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{ display: 'flex' }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
           {[{ key: 'recent', label: 'Récent' }, { key: 'top', label: 'Top' }].map(t => (
             <button key={t.key} onClick={() => setSortTab(t.key)} style={{
-              flex: 1, padding: '14px 0', cursor: 'pointer', background: 'none', border: 'none',
+              flex: 1, padding: '15px 0', cursor: 'pointer', background: 'none', border: 'none',
               color: sortTab === t.key ? '#f1f5f9' : '#536471',
               fontSize: 15, fontWeight: sortTab === t.key ? 700 : 500, position: 'relative', transition: 'color .15s',
             }}>
@@ -572,8 +572,7 @@ export default function SocialFeed({ isMobile }) {
 
         {/* Filter tabs */}
         <div style={{
-          display: 'flex', gap: 8, padding: '10px 16px',
-          borderTop: '1px solid rgba(255,255,255,0.04)',
+          display: 'flex', gap: 8, padding: '12px 16px',
         }}>
           {FEED_FILTERS.map(f => (
             <button key={f.key} onClick={() => setFilterTab(f.key)} style={{
