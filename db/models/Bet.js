@@ -35,6 +35,9 @@ const BetSchema = new mongoose.Schema({
     index: true,
   },
 
+  // ── Agent identity ────────────────────────────────────────────────────────
+  isAgent:         { type: Boolean, default: false },
+
   // ── Timestamps ────────────────────────────────────────────────────────────
   placedAt:        { type: Date, default: Date.now },
   settledAt:       Date,   // when won/lost

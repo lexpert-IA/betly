@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../hooks/useAuth';
+import { Bot, Copy } from 'lucide-react';
 
 const RANK = (i) => i === 0 ? '#1' : i === 1 ? '#2' : i === 2 ? '#3' : String(i + 1);
 
@@ -163,6 +164,17 @@ export default function Leaderboard() {
   const topCreators = data?.topCreators || [];
   const topMarkets  = data?.topMarkets  || [];
 
+  // Agents leaderboard
+  const [agents, setAgents] = useState([]);
+  const base = import.meta.env.VITE_API_URL || '';
+  useEffect(() => {
+    if (tab !== 'agents') return;
+    fetch(`${base}/api/agents/leaderboard`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.agents) setAgents(d.agents); })
+      .catch(() => {});
+  }, [tab]);
+
   // Find if current user is in top 10
   const myRankIdx = user
     ? topBettors.findIndex(u => u._id === user._id || u.telegramId === user.telegramId)
@@ -189,6 +201,7 @@ export default function Leaderboard() {
         <TabBtn active={tab === 'bettors'}  onClick={() => setTab('bettors')}>Top parieurs</TabBtn>
         <TabBtn active={tab === 'creators'} onClick={() => setTab('creators')}>Top créateurs</TabBtn>
         <TabBtn active={tab === 'markets'}  onClick={() => setTab('markets')}>Top marchés</TabBtn>
+        <TabBtn active={tab === 'agents'}   onClick={() => setTab('agents')}>Agents IA</TabBtn>
       </div>
 
       {error && (
@@ -454,6 +467,153 @@ export default function Leaderboard() {
                     </a>
                   );
                 })}
+            </>
+          )}
+
+          {/* ── Agents IA ──────────────────────────────────────────── */}
+          {tab === 'agents' && (
+            <>
+              {!isMobile && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '40px 1fr 80px 80px 90px 80px',
+                  padding: '10px 16px',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  fontSize: '11px', fontWeight: 600, color: '#6060a0',
+                  textTransform: 'uppercase', letterSpacing: '0.5px',
+                }}>
+                  <span>#</span>
+                  <span>Agent</span>
+                  <span style={{ textAlign: 'right' }}>Win rate</span>
+                  <span style={{ textAlign: 'right' }}>ROI</span>
+                  <span style={{ textAlign: 'right' }}>Volume</span>
+                  <span style={{ textAlign: 'right' }}>Copieurs</span>
+                </div>
+              )}
+
+              {agents.length === 0
+                ? <EmptyRow msg="Aucun agent classé pour le moment" />
+                : agents.map((agent, i) => (
+                  <div
+                    key={agent._id || i}
+                    style={{
+                      borderBottom: '1px solid rgba(255,255,255,0.04)',
+                      cursor: 'pointer', transition: 'background 0.1s',
+                    }}
+                    onClick={() => window.location.href = `/profile/agent:${agent._id}`}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    {/* Desktop row */}
+                    {!isMobile && (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '40px 1fr 80px 80px 90px 80px',
+                        padding: '12px 16px',
+                        alignItems: 'center', fontSize: '13px',
+                      }}>
+                        <span style={{ color: rankColor(i), fontWeight: 700 }}>{RANK(i)}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                            background: `linear-gradient(135deg, ${agent.avatarColor || '#7c3aed'}, ${(agent.avatarColor || '#7c3aed')}88)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <Bot size={16} color="#fff" strokeWidth={2} />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 2,
+                                padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+                                background: 'rgba(124,58,237,0.12)', color: '#a855f7',
+                              }}>
+                                <Bot size={8} strokeWidth={3} /> IA
+                              </span>
+                              <span style={{ color: '#e2e2e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {agent.agentName}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: '#536471', marginTop: 1 }}>
+                              par @{agent.ownerPseudo}
+                              {agent.strategy && <span> · {agent.strategy.length > 40 ? agent.strategy.slice(0, 40) + '…' : agent.strategy}</span>}
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ textAlign: 'right', color: agent.winRate >= 60 ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                          {agent.winRate}%
+                        </span>
+                        <span style={{ textAlign: 'right', color: agent.roi > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                          {agent.roi > 0 ? '+' : ''}{agent.roi}%
+                        </span>
+                        <span style={{ textAlign: 'right', color: '#a78bfa', fontWeight: 600 }}>
+                          ${(agent.totalVolume || 0).toLocaleString()}
+                        </span>
+                        <span style={{ textAlign: 'right', color: '#94a3b8' }}>
+                          {agent.copiers || 0}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Mobile card */}
+                    {isMobile && (
+                      <div style={{
+                        padding: '12px 16px',
+                        display: 'flex', alignItems: 'center', gap: 12,
+                      }}>
+                        <span style={{ fontSize: 18, color: rankColor(i), fontWeight: 700, minWidth: 28 }}>{RANK(i)}</span>
+                        <div style={{
+                          width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+                          background: `linear-gradient(135deg, ${agent.avatarColor || '#7c3aed'}, ${(agent.avatarColor || '#7c3aed')}88)`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Bot size={18} color="#fff" strokeWidth={2} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 2,
+                              padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+                              background: 'rgba(124,58,237,0.12)', color: '#a855f7',
+                            }}>
+                              <Bot size={8} strokeWidth={3} /> IA
+                            </span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8' }}>
+                              {agent.agentName}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#536471' }}>par @{agent.ownerPseudo}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 11 }}>
+                            <span style={{ color: agent.winRate >= 60 ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                              {agent.winRate}% WR
+                            </span>
+                            <span style={{ color: agent.roi > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                              {agent.roi > 0 ? '+' : ''}{agent.roi}% ROI
+                            </span>
+                            <span style={{ color: '#a78bfa' }}>
+                              ${(agent.totalVolume || 0).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+              {/* CTA */}
+              <div style={{
+                padding: '16px', textAlign: 'center',
+                borderTop: '1px solid rgba(255,255,255,0.04)',
+              }}>
+                <a href="/agents" style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '8px 20px', borderRadius: 10, textDecoration: 'none',
+                  background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+                  color: '#a855f7', fontSize: 12, fontWeight: 700,
+                }}>
+                  <Bot size={14} strokeWidth={2} /> Voir tous les agents
+                </a>
+              </div>
             </>
           )}
         </div>

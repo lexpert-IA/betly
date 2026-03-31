@@ -31,6 +31,8 @@ import ResponsibleGamingPage from './pages/ResponsibleGamingPage';
 import LegalPage from './pages/LegalPage';
 import PositionsPage from './pages/PositionsPage';
 import SharePage from './pages/SharePage';
+import AgentsPage from './pages/AgentsPage';
+import DocsPage from './pages/DocsPage';
 import AgeVerification from './components/AgeVerification';
 
 const DYNAMIC_ENV_ID = (import.meta.env.VITE_DYNAMIC_ENV_ID || '043ee6c8-bac8-4266-8345-794bb7a378a7').trim();
@@ -174,6 +176,8 @@ function getPage() {
   if (path === '/responsible-gaming') return 'responsible-gaming';
   if (path === '/legal') return 'legal';
   if (path === '/positions') return 'positions';
+  if (path === '/agents') return 'agents';
+  if (path === '/docs') return 'docs';
   if (path.startsWith('/share/')) return 'share';
   if (path.startsWith('/profile/')) return 'profile';
   if (path.startsWith('/market/')) return 'market';
@@ -281,6 +285,8 @@ function AppInner({ walletDisabled = false }) {
             {page === 'legal'               && <LegalPage />}
             {page === 'positions'           && <AuthGuard><PositionsPage /></AuthGuard>}
             {page === 'share'               && <SharePage betId={window.location.pathname.split('/share/')[1]} />}
+            {page === 'agents'              && <AgentsPage />}
+            {page === 'docs'                && <DocsPage />}
           </PageErrorBoundary>
         </main>
 

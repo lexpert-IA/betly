@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import AiAnalysis from '../components/AiAnalysis';
 import { useUserId } from '../hooks/useApi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { apiFetch } from '../lib/api';
+import { Shield, CheckCircle, XCircle, AlertTriangle, Loader2, Eye } from 'lucide-react';
 
 const TAG_SUGGESTIONS = {
   sport:     ['football', 'nba', 'tennis', 'euro2026', 'ligue1'],
@@ -18,6 +19,197 @@ const PLATFORMS = [
   { key: 'tiktok',    label: 'TikTok'     },
   { key: 'instagram', label: 'Instagram'  },
 ];
+
+// ── Moderation tracker component ─────────────────────────────────────────────
+function ModerationTracker({ marketId, marketTitle }) {
+  const [phase, setPhase] = useState('validating');
+  const [decision, setDecision] = useState(null);
+  const [reason, setReason] = useState(null);
+  const [doubleCheckReason, setDoubleCheckReason] = useState(null);
+  const pollRef = useRef(null);
+  const base = import.meta.env.VITE_API_URL || '';
+
+  const poll = useCallback(async () => {
+    try {
+      const res = await fetch(`${base}/api/markets/${marketId}/moderation-status`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setPhase(data.moderationPhase);
+      setDecision(data.decision);
+      setReason(data.reason);
+      if (data.postModeration?.reason && data.moderationPhase === 'double_check') {
+        setDoubleCheckReason(data.postModeration.reason);
+      }
+      // Stop polling when complete
+      if (data.moderationPhase === 'complete' || data.moderationPhase === 'manual_review') {
+        clearInterval(pollRef.current);
+      }
+    } catch { /* silent */ }
+  }, [marketId]);
+
+  useEffect(() => {
+    poll(); // immediate first check
+    pollRef.current = setInterval(poll, 2000); // poll every 2s
+    return () => clearInterval(pollRef.current);
+  }, [poll]);
+
+  const PHASES = {
+    validating: {
+      icon: Shield, color: '#a855f7', bg: 'rgba(168,85,247,0.08)',
+      border: 'rgba(168,85,247,0.2)', label: 'Validation IA en cours...',
+      sub: 'L\'IA analyse la qualité, la vérifiabilité et la sécurité de votre marché.',
+    },
+    double_check: {
+      icon: Eye, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',
+      border: 'rgba(245,158,11,0.2)', label: 'Double vérification en cours...',
+      sub: 'Un doute a été détecté. Un second contrôle IA est lancé.',
+    },
+    complete: decision === 'approved' ? {
+      icon: CheckCircle, color: '#22c55e', bg: 'rgba(34,197,94,0.08)',
+      border: 'rgba(34,197,94,0.2)', label: 'Marché approuvé !',
+      sub: 'Votre marché est maintenant visible dans le feed.',
+    } : {
+      icon: XCircle, color: '#ef4444', bg: 'rgba(239,68,68,0.08)',
+      border: 'rgba(239,68,68,0.2)', label: 'Marché rejeté',
+      sub: reason || 'Ce marché ne respecte pas les critères de la plateforme.',
+    },
+    manual_review: {
+      icon: AlertTriangle, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',
+      border: 'rgba(245,158,11,0.2)', label: 'En attente de review manuelle',
+      sub: 'Ce marché sera examiné par l\'équipe.',
+    },
+    unknown: {
+      icon: Loader2, color: '#64748b', bg: 'rgba(255,255,255,0.04)',
+      border: 'rgba(255,255,255,0.08)', label: 'Chargement...',
+      sub: '',
+    },
+  };
+
+  const p = PHASES[phase] || PHASES.unknown;
+  const Icon = p.icon;
+  const isLoading = phase === 'validating' || phase === 'double_check';
+
+  return (
+    <div style={{
+      background: p.bg, border: `1px solid ${p.border}`, borderRadius: 12,
+      padding: '20px', marginTop: 16,
+    }}>
+      {/* Title */}
+      <div style={{
+        fontSize: 13, fontWeight: 600, color: '#94a3b8', marginBottom: 12,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>
+        "{marketTitle}"
+      </div>
+
+      {/* Progress steps */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 16 }}>
+        {/* Step 1: Pre-filter */}
+        <StepDot done={true} color="#22c55e" label="Filtre" />
+        <StepLine done={true} />
+        {/* Step 2: AI Analysis */}
+        <StepDot done={true} color="#22c55e" label="Analyse" />
+        <StepLine done={phase !== 'validating'} />
+        {/* Step 3: Post-moderation */}
+        <StepDot
+          done={phase === 'complete' && decision === 'approved'}
+          active={phase === 'validating'}
+          failed={phase === 'complete' && decision === 'rejected'}
+          color={phase === 'complete' ? (decision === 'approved' ? '#22c55e' : '#ef4444') : '#a855f7'}
+          label="Validation"
+        />
+        {(phase === 'double_check' || (phase === 'complete' && doubleCheckReason)) && (
+          <>
+            <StepLine done={phase === 'complete'} color="#f59e0b" />
+            <StepDot
+              done={phase === 'complete'}
+              active={phase === 'double_check'}
+              failed={phase === 'complete' && decision === 'rejected' && !!doubleCheckReason}
+              color={phase === 'complete' ? (decision === 'approved' ? '#22c55e' : '#ef4444') : '#f59e0b'}
+              label="Double vérif"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Status */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Icon
+          size={20}
+          color={p.color}
+          style={isLoading ? { animation: 'spin 1.5s linear infinite' } : {}}
+        />
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: p.color }}>{p.label}</div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>{p.sub}</div>
+        </div>
+      </div>
+
+      {/* Reason detail for double_check */}
+      {phase === 'double_check' && doubleCheckReason && (
+        <div style={{
+          marginTop: 10, padding: '8px 12px', borderRadius: 8,
+          background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)',
+          fontSize: 12, color: '#f59e0b',
+        }}>
+          Raison : {doubleCheckReason}
+        </div>
+      )}
+
+      {/* Link to market if approved */}
+      {phase === 'complete' && decision === 'approved' && (
+        <div style={{ marginTop: 12 }}>
+          <a href={`/market/${marketId}`} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 18px', borderRadius: 10, textDecoration: 'none',
+            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+            color: '#22c55e', fontSize: 13, fontWeight: 700,
+          }}>
+            Voir le marché →
+          </a>
+        </div>
+      )}
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function StepDot({ done, active, failed, color, label }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: '50%',
+        background: done ? color : failed ? '#ef4444' : active ? `${color}30` : 'rgba(255,255,255,0.06)',
+        border: active ? `2px solid ${color}` : '2px solid transparent',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all .3s',
+      }}>
+        {done && <CheckCircle size={14} color="#fff" />}
+        {failed && <XCircle size={14} color="#fff" />}
+        {active && (
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%', background: color,
+            animation: 'pulse-dot 1.5s ease-in-out infinite',
+          }} />
+        )}
+      </div>
+      <span style={{ fontSize: 9, color: '#64748b', whiteSpace: 'nowrap' }}>{label}</span>
+      <style>{`@keyframes pulse-dot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.7); } }`}</style>
+    </div>
+  );
+}
+
+function StepLine({ done, color = '#22c55e' }) {
+  return (
+    <div style={{
+      flex: 1, height: 2, minWidth: 20, margin: '0 4px',
+      background: done ? color : 'rgba(255,255,255,0.08)',
+      borderRadius: 99, transition: 'background .3s',
+      marginBottom: 18, // align with dot (above label)
+    }} />
+  );
+}
 
 export default function CreateMarket() {
   const userId = useUserId();
@@ -93,9 +285,7 @@ export default function CreateMarket() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur serveur');
-      setSubmitResult({ success: true, market: data.market });
-      setForm({ title: '', description: '', resolutionDate: '', minBet: 1 });
-      setAnalysis(null);
+      setSubmitResult({ success: true, market: data.market, title: form.title });
     } catch (err) {
       setSubmitResult({ success: false, message: err.message });
     } finally {
@@ -397,27 +587,23 @@ export default function CreateMarket() {
           </span>
         </div>
 
-        {/* Submit result */}
-        {submitResult && (
-          <div
-            style={{
-              padding: '12px 16px',
-              borderRadius: '8px',
-              background: submitResult.success ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-              border: `1px solid ${submitResult.success ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
-              color: submitResult.success ? '#22c55e' : '#ef4444',
-              fontSize: '13px',
-            }}
-          >
-            {submitResult.success
-              ? `Marché créé avec succès ! ID: ${submitResult.market._id}`
-              : `Erreur: ${submitResult.message}`}
-            {submitResult.success && (
-              <div style={{ marginTop: '8px' }}>
-                <a href="/" style={{ color: '#22c55e', fontSize: '13px' }}>← Voir le feed</a>
-              </div>
-            )}
+        {/* Submit result + moderation tracker */}
+        {submitResult && !submitResult.success && (
+          <div style={{
+            padding: '12px 16px', borderRadius: '8px',
+            background: 'rgba(239,68,68,0.1)',
+            border: '1px solid rgba(239,68,68,0.2)',
+            color: '#ef4444', fontSize: '13px',
+          }}>
+            Erreur: {submitResult.message}
           </div>
+        )}
+
+        {submitResult?.success && submitResult.market && (
+          <ModerationTracker
+            marketId={submitResult.market._id}
+            marketTitle={submitResult.title || submitResult.market.title}
+          />
         )}
 
         {/* Submit button */}
