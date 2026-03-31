@@ -132,7 +132,7 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 0,
-      position: 'sticky', top: 16, maxHeight: 'calc(100vh - 32px)',
+      position: 'sticky', top: 68, maxHeight: 'calc(100vh - 84px)',
       overflowY: 'auto', overflowX: 'hidden',
       borderRadius: 16,
       border: '1px solid rgba(255,255,255,0.06)',
@@ -144,10 +144,10 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
       <div style={{
         position: 'sticky', top: 0, zIndex: 5,
         background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(12px)',
-        padding: '16px 18px 12px',
+        padding: '18px 18px 14px',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <BarChart3 size={18} color="#a855f7" strokeWidth={2.5} />
             <span style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9' }}>Marchés</span>
@@ -166,7 +166,7 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
         </div>
 
         {/* Feed tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 10 }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
             { key: 'global',   label: 'Global',   Icon: Globe },
             { key: 'pour-toi', label: 'Pour toi', Icon: Star  },
@@ -191,13 +191,13 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
 
         {/* Category + sort pills (global only) */}
         {feedTab === 'global' && (
-          <div className="scroll-row no-scrollbar" style={{ gap: 5 }}>
+          <div className="scroll-row no-scrollbar" style={{ gap: 6 }}>
             {CATEGORIES.map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
                 style={{
-                  padding: '4px 12px', borderRadius: 999, cursor: 'pointer', transition: 'all .15s',
+                  padding: '5px 12px', borderRadius: 999, cursor: 'pointer', transition: 'all .15s',
                   border: category === cat ? '1px solid #a855f7' : '1px solid rgba(255,255,255,0.06)',
                   background: category === cat ? 'rgba(168,85,247,0.12)' : 'transparent',
                   color: category === cat ? '#a855f7' : '#94a3b8',
@@ -243,12 +243,12 @@ function MarketsSidebar({ markets, loading, error, feedTab, category, sort,
       </div>
 
       {/* Live activity */}
-      <div style={{ padding: '12px 14px 0' }}>
+      <div style={{ padding: '14px 16px 0' }}>
         <LiveActivityBar />
       </div>
 
       {/* Market cards */}
-      <div style={{ padding: '8px 14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ padding: '10px 16px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {loading ? (
           [1,2,3].map(i => <SkeletonCard key={i} />)
         ) : error ? (
@@ -412,11 +412,11 @@ export default function Feed() {
   // ── Desktop layout: 2 columns ──────────────────────────────────────────────
   return (
     <div style={{
-      maxWidth: 1280, margin: '0 auto', padding: '16px 24px',
+      maxWidth: 1280, margin: '0 auto', padding: '20px 24px',
       position: 'relative', zIndex: 1,
       display: 'grid',
       gridTemplateColumns: '1fr 420px',
-      gap: 24,
+      gap: 28,
       alignItems: 'start',
     }}>
       {/* ═══ LEFT: Social Feed (main content) ═══ */}
