@@ -2,7 +2,7 @@ require('dotenv').config();
 
 module.exports = {
   db: { uri: process.env.MONGODB_URI },
-  walletEncryptionKey: process.env.WALLET_ENCRYPTION_KEY || null,
+  walletEncryptionKey: (process.env.WALLET_ENCRYPTION_KEY || '').trim() || null,
   polyfrenchApiUrl:    process.env.POLYFRENCH_API_URL    || 'http://localhost:3000',
   anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
   env: process.env.NODE_ENV || 'development',
