@@ -74,16 +74,16 @@ function StatBox({ label, value, color, sub }) {
   );
 }
 
-// ── Deposit tab ───────────────────────────────────────────────────────────────
+// ── Deposit tab — Single window with Crypto/Euros tabs ───────────────────────
 function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
   const [copied, setCopied] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkResult, setCheckResult] = useState(null);
   const [creatingWallet, setCreatingWallet] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [fundTab, setFundTab] = useState('crypto'); // 'crypto' | 'euros'
+  const [fiatProvider, setFiatProvider] = useState(null); // null | 'coinbase' | 'binance'
   const { balance, nativeBalance, bridgedBalance, refetch } = useUsdcBalance(address, 10000);
-
-  const API = import.meta.env.VITE_API_URL || '';
 
   async function handleCreateWallet() {
     setCreatingWallet(true);
@@ -118,9 +118,7 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
       });
       const data = await res.json();
       setCheckResult(data);
-      if (data.deposited > 0) {
-        refreshUser();
-      }
+      if (data.deposited > 0) refreshUser();
     } catch (e) {
       setCheckResult({ error: e.message });
     } finally {
@@ -128,402 +126,475 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
     }
   }
 
-  // ── shared sub-styles ──
-  const card = {
-    background: '#111118',
-    border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    padding: '20px 20px 18px',
-    marginBottom: 12,
+  // ── Styles communs ──
+  const S = {
+    card: { background: '#0e0e16', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16 },
+    label: { fontSize: 11, color: '#4a4a6a', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 },
+    divider: { height: 1, background: 'rgba(255,255,255,0.05)', margin: '0' },
   };
-  const stepRow = { display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 8 };
-  const stepNum = {
-    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-    background: 'rgba(124,58,237,0.2)', border: '1px solid rgba(124,58,237,0.35)',
-    color: '#a855f7', fontSize: 11, fontWeight: 800,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    marginTop: 1,
-  };
-  const stepText = { fontSize: 13, color: '#94a3b8', lineHeight: 1.5 };
-  const badge = (color, bg, text) => (
-    <span style={{
-      padding: '2px 8px', borderRadius: 99, fontSize: 10, fontWeight: 700,
-      color, background: bg, border: `1px solid ${color}44`,
-    }}>{text}</span>
-  );
-  const externalBtn = (href, label, color = '#7c3aed') => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-        background: `linear-gradient(135deg, ${color}, ${color}bb)`,
-        color: '#fff', fontSize: 12, fontWeight: 700, textDecoration: 'none',
-        transition: 'opacity .15s',
-      }}
-      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-    >
-      {label} ↗
-    </a>
-  );
 
-  // ── Pas de wallet → choix création / connexion ──────────────────────────────
+  // ── No wallet → setup flow ──
   if (!address) {
     return (
-      <div style={{ maxWidth: 460, margin: '0 auto', paddingTop: 16 }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>👛</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', marginBottom: 6 }}>
-            Configure ton wallet
-          </div>
-          <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
-            Tu as besoin d'un wallet Polygon pour déposer des USDC et commencer à parier.
-          </div>
+      <div style={{ maxWidth: 600, margin: '0 auto', paddingTop: 32 }}>
+
+        {/* Header */}
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', margin: '0 0 8px' }}>
+            Créer votre portefeuille
+          </h2>
+          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+            Un portefeuille USDC sur Polygon est requis pour déposer des fonds et parier.
+          </p>
         </div>
 
-        {/* Option 1 — Créer wallet Betly */}
+        {/* Main CTA */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(168,85,247,0.05))',
-          border: '1px solid rgba(124,58,237,0.35)',
-          borderRadius: 16, padding: '22px 24px', marginBottom: 12,
+          ...S.card,
+          padding: 32, marginBottom: 16,
+          border: '1px solid rgba(124,58,237,0.25)',
+          position: 'relative', overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+          <div style={{
+            position: 'absolute', inset: 0, pointerEvents: 'none',
+            background: 'radial-gradient(ellipse at top left, rgba(124,58,237,0.07) 0%, transparent 60%)',
+          }} />
+          <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
             <div style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+              width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, boxShadow: '0 0 16px rgba(124,58,237,0.4)',
-            }}>🔐</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#f8fafc' }}>Wallet Betly</div>
-              <div style={{ fontSize: 11, color: '#a78bfa' }}>Créé en 1 clic · Aucune extension requise</div>
+            }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/>
+                <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+                <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+              </svg>
             </div>
-            <span style={{
-              marginLeft: 'auto', padding: '3px 10px', borderRadius: 99,
-              background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.3)',
-              fontSize: 10, fontWeight: 700, color: '#22c55e',
-            }}>Recommandé</span>
-          </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16, lineHeight: 1.6 }}>
-            On génère un wallet Polygon sécurisé pour toi. Tu déposes des USDC dessus et tu paries immédiatement — comme sur Polymarket.
-          </div>
-          {createError && (
-            <div style={{ fontSize: 12, color: '#ef4444', marginBottom: 10, padding: '8px 12px', background: 'rgba(239,68,68,0.08)', borderRadius: 8 }}>
-              {createError}
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <span style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc' }}>Portefeuille Betly</span>
+                <span style={{
+                  padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
+                  background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
+                }}>Recommandé</span>
+              </div>
+              <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>
+                Portefeuille non-custodial créé instantanément. Aucune extension de navigateur requise. Compatible avec tous les échanges et bridges.
+              </p>
+              <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
+                {[
+                  { icon: '⚡', text: 'Création instantanée' },
+                  { icon: '🔐', text: 'Clé privée chiffrée' },
+                  { icon: '🌐', text: 'Réseau Polygon' },
+                ].map(({ icon, text }) => (
+                  <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#94a3b8' }}>
+                    <span>{icon}</span>{text}
+                  </div>
+                ))}
+              </div>
+              {createError && (
+                <div style={{
+                  fontSize: 12, color: '#ef4444', marginBottom: 16, padding: '10px 14px',
+                  background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)',
+                }}>
+                  {createError}
+                </div>
+              )}
+              <button
+                onClick={handleCreateWallet}
+                disabled={creatingWallet}
+                style={{
+                  padding: '13px 32px', borderRadius: 12, border: 'none',
+                  background: creatingWallet ? 'rgba(124,58,237,0.3)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  color: '#fff', fontSize: 14, fontWeight: 700,
+                  cursor: creatingWallet ? 'wait' : 'pointer',
+                  boxShadow: creatingWallet ? 'none' : '0 4px 20px rgba(124,58,237,0.3)',
+                  transition: 'all .2s',
+                }}
+              >
+                {creatingWallet ? 'Création en cours…' : 'Créer mon portefeuille'}
+              </button>
             </div>
-          )}
-          <button
-            onClick={handleCreateWallet}
-            disabled={creatingWallet}
-            style={{
-              width: '100%', padding: '12px 0', borderRadius: 10, border: 'none',
-              background: creatingWallet
-                ? 'rgba(124,58,237,0.4)'
-                : 'linear-gradient(135deg, #7c3aed, #a855f7)',
-              color: '#fff', fontSize: 14, fontWeight: 800,
-              cursor: creatingWallet ? 'not-allowed' : 'pointer',
-              boxShadow: creatingWallet ? 'none' : '0 0 20px rgba(124,58,237,0.4)',
-              transition: 'all .2s',
-              letterSpacing: '0.3px',
-            }}
-          >
-            {creatingWallet ? 'Création en cours…' : '🚀 Créer mon wallet Betly'}
-          </button>
+          </div>
         </div>
 
-        {/* Option 2 — Wallet existant */}
-        <div style={{
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 16, padding: '18px 24px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        {/* Alternative — wallet externe */}
+        <div style={{ ...S.card, padding: '16px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
-              width: 40, height: 40, borderRadius: 10,
-              background: 'rgba(255,165,0,0.15)', border: '1px solid rgba(255,165,0,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-            }}>🦊</div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>Wallet existant</div>
-              <div style={{ fontSize: 11, color: '#64748b' }}>MetaMask, Coinbase Wallet, WalletConnect…</div>
+              width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+              background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
             </div>
-          </div>
-          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 14, lineHeight: 1.6 }}>
-            Tu as déjà un wallet crypto ? Connecte-le via le bouton <strong style={{ color: '#94a3b8' }}>Wallet</strong> en haut à droite.
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#c8c8d8', marginBottom: 2 }}>Connecter un wallet existant</div>
+              <div style={{ fontSize: 12, color: '#475569' }}>MetaMask, Coinbase Wallet, WalletConnect — via le bouton Wallet en haut</div>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
           </div>
         </div>
       </div>
     );
   }
 
+  // ── Wallet active — single deposit window ──
   return (
-    <div style={{ maxWidth: 460, margin: '0 auto', paddingTop: 8 }}>
+    <div style={{ maxWidth: 560, margin: '0 auto', paddingTop: 8 }}>
 
-      {/* ── Header ── */}
-      <div style={{ marginBottom: 20, textAlign: 'center' }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
-          Déposer des USDC
-        </div>
-        <div style={{ fontSize: 12, color: '#475569' }}>
-          Choisis ta méthode pour créditer ton compte Betly
-        </div>
-      </div>
+      {/* ═══ SINGLE DEPOSIT WINDOW ═══ */}
+      <div style={{
+        background: '#111118', borderRadius: 18,
+        border: '1px solid rgba(255,255,255,0.06)',
+        overflow: 'hidden',
+      }}>
 
-      {/* ══ Option 1 — Coinbase ══ */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: '#0052ff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16, fontWeight: 900, color: '#fff',
-            }}>C</div>
+        {/* ── Top: Balance + Address + Warning ── */}
+        <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          {/* Balance row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 1 — Coinbase</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Recommandé en France</div>
+              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>Solde on-chain</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#f8fafc', lineHeight: 1 }}>
+                ${balance !== null ? parseFloat(balance).toFixed(2) : '0.00'}
+              </div>
+              {balance !== null && (nativeBalance > 0 || bridgedBalance > 0) && (
+                <div style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12 }}>
+                  {nativeBalance > 0 && <span style={{ color: '#64748b' }}>USDC: <strong style={{ color: '#22c55e' }}>${nativeBalance.toFixed(2)}</strong></span>}
+                  {bridgedBalance > 0 && <span style={{ color: '#64748b' }}>USDC.e: <strong style={{ color: '#60a5fa' }}>${bridgedBalance.toFixed(2)}</strong></span>}
+                </div>
+              )}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              {typeof betlyBalance === 'number' && (
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Solde Betly</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#a855f7' }}>${betlyBalance.toFixed(2)}</div>
+                </div>
+              )}
+              <button
+                onClick={refetch}
+                style={{
+                  padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
+                  background: 'transparent', color: '#64748b', fontSize: 10, cursor: 'pointer',
+                  transition: 'all .15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#a855f7'; e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+              >
+                Actualiser
+              </button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {badge('#22c55e', 'rgba(34,197,94,0.1)', 'Recommandé')}
-            {badge('#60a5fa', 'rgba(96,165,250,0.1)', '5–10 min')}
-          </div>
-        </div>
 
-        <div style={{ marginBottom: 14 }}>
-          {[
-            'Crée un compte Coinbase (5 min, pièce d\'identité requise)',
-            'Achète de l\'USDC avec ta carte bancaire ou virement',
-            'Va dans "Envoyer" → colle ton adresse BETLY ci-dessous',
-            'Choisis le réseau Polygon (MATIC) — obligatoire',
-          ].map((step, i) => (
-            <div key={i} style={stepRow}>
-              <div style={stepNum}>{i + 1}</div>
-              <div style={stepText}>{step}</div>
-            </div>
-          ))}
-        </div>
-
-        {externalBtn('https://www.coinbase.com/buy/usdc', 'Ouvrir Coinbase', '#0052ff')}
-      </div>
-
-      {/* ══ Option 2 — Binance ══ */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: '#f0b90b', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16, fontWeight: 900, color: '#1a1a1a',
-            }}>B</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 2 — Binance</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Plus de volumes disponibles</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {badge('#f59e0b', 'rgba(245,158,11,0.1)', '10–15 min')}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          {[
-            'Crée un compte Binance et valide ton identité (KYC)',
-            'Achète de l\'USDC via "Acheter des cryptos"',
-            'Va dans "Portefeuille" → "Retrait" → cherche USDC',
-            'Colle ton adresse BETLY, sélectionne le réseau Polygon',
-          ].map((step, i) => (
-            <div key={i} style={stepRow}>
-              <div style={stepNum}>{i + 1}</div>
-              <div style={stepText}>{step}</div>
-            </div>
-          ))}
-        </div>
-
-        {externalBtn('https://www.binance.com/fr/buy-sell-crypto', 'Ouvrir Binance', '#b8860b')}
-      </div>
-
-      {/* ══ Option 3 — Bridge depuis une autre chaîne ══ */}
-      <div style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16,
-            }}>🌉</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 3 — Bridge depuis une autre chaîne</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Ethereum, Arbitrum, Base, Optimism…</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {badge('#3b82f6', 'rgba(59,130,246,0.1)', '2–5 min')}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          {[
-            'Tu as des USDC ou ETH sur une autre chaîne (Ethereum, Arbitrum, Base…)',
-            'Utilise Jumper Exchange pour bridge vers Polygon en 1 clic',
-            'Colle ton adresse BETLY comme destination',
-          ].map((step, i) => (
-            <div key={i} style={stepRow}>
-              <div style={stepNum}>{i + 1}</div>
-              <div style={stepText}>{step}</div>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {address
-            ? externalBtn(`https://jumper.exchange/?toChain=137&toToken=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359&toAddress=${address}`, 'Ouvrir Jumper Exchange', '#3b82f6')
-            : externalBtn('https://jumper.exchange/?toChain=137&toToken=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', 'Ouvrir Jumper Exchange', '#3b82f6')
-          }
-        </div>
-      </div>
-
-      {/* ══ Option 4 — Envoi direct USDC Polygon ══ */}
-      <div style={{ ...card, border: '1px solid rgba(124,58,237,0.25)', background: 'rgba(124,58,237,0.04)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: 'linear-gradient(135deg,#7c3aed,#a855f7)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 16,
-            }}>⚡</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>Option 4 — Envoi direct</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>USDC ou USDC.e sur Polygon</div>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {badge('#22c55e', 'rgba(34,197,94,0.1)', '✓ Gratuit')}
-            {badge('#a855f7', 'rgba(168,85,247,0.1)', '< 1 min')}
-          </div>
-        </div>
-
-        {/* Tokens acceptés */}
-        <div style={{
-          display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap',
-        }}>
+          {/* Address + QR inline */}
           <div style={{
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-            background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)',
-            color: '#22c55e', display: 'flex', alignItems: 'center', gap: 5,
+            padding: '14px 16px', borderRadius: 12,
+            background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)',
           }}>
-            <span style={{ fontSize: 8 }}>●</span> USDC (native)
-          </div>
-          <div style={{
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-            background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)',
-            color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            <span style={{ fontSize: 8 }}>●</span> USDC.e (bridged)
-          </div>
-          <div style={{
-            padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-            background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)',
-            color: '#a855f7', display: 'flex', alignItems: 'center', gap: 5,
-          }}>
-            Réseau : Polygon uniquement
-          </div>
-        </div>
-
-        {/* QR Code */}
-        {address ? (
-          <div style={{ textAlign: 'center', marginBottom: 14 }}>
-            <div style={{ display: 'inline-block', padding: 14, background: '#fff', borderRadius: 14, marginBottom: 12 }}>
-              <QRCodeSVG value={address} size={160} />
-            </div>
-
-            {/* Address */}
-            <div style={{
-              padding: '10px 12px', borderRadius: 8, marginBottom: 8,
-              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-              fontSize: 12, color: '#94a3b8', fontFamily: 'monospace',
-              wordBreak: 'break-all', textAlign: 'left',
-            }}>
-              {address}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <div style={{ padding: 8, background: '#fff', borderRadius: 8, flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                <QRCodeSVG value={address} size={64} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                  Ton adresse de d&eacute;p&ocirc;t &middot; Polygon
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                  {address}
+                </div>
+              </div>
             </div>
             <button
               onClick={copyAddr}
               style={{
-                width: '100%', padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(124,58,237,0.15)',
+                width: '100%', padding: '10px', borderRadius: 8, border: 'none',
+                cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                background: copied ? 'rgba(34,197,94,0.1)' : 'rgba(124,58,237,0.1)',
                 color: copied ? '#22c55e' : '#a855f7',
-                fontSize: 12, fontWeight: 700, transition: 'all .2s',
+                transition: 'all .15s',
               }}
             >
-              {copied ? '✓ Adresse copiée !' : 'Copier l\'adresse'}
+              {copied ? '\u2713 Adresse copi\u00e9e' : 'Copier l\u2019adresse'}
             </button>
           </div>
-        ) : (
-          <div style={{ padding: '24px 0', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
-            Connecte ton wallet pour voir l'adresse de dépôt
-          </div>
-        )}
 
-        {/* On-chain balance */}
-        <div style={{
-          padding: '14px 16px', borderRadius: 10,
-          background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.15)',
-          marginBottom: 12,
-        }}>
-          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Balance on-chain · Polygon</div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: '#a855f7', marginBottom: 6 }}>
-            {balance !== null ? `${parseFloat(balance).toFixed(2)} USDC` : '—'}
-          </div>
-          {balance !== null && (nativeBalance > 0 || bridgedBalance > 0) && (
-            <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#64748b' }}>
-              {nativeBalance > 0 && (
-                <span><span style={{ color: '#22c55e', fontWeight: 600 }}>{nativeBalance.toFixed(2)}</span> USDC</span>
-              )}
-              {bridgedBalance > 0 && (
-                <span><span style={{ color: '#60a5fa', fontWeight: 600 }}>{bridgedBalance.toFixed(2)}</span> USDC.e</span>
-              )}
+          {/* Warning */}
+          <div style={{
+            display: 'flex', gap: 8, marginTop: 12, padding: '10px 12px', borderRadius: 8,
+            background: 'rgba(245,158,11,0.04)', border: '1px solid rgba(245,158,11,0.1)',
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <path d="M12 9v4"/><path d="M12 17h.01"/>
+            </svg>
+            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
+              Envoie uniquement des <strong style={{ color: '#f8fafc' }}>USDC</strong> ou <strong style={{ color: '#f8fafc' }}>USDC.e</strong> sur le r&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong>. Autre token ou r&eacute;seau = fonds perdus.
             </div>
-          )}
-          <div style={{ fontSize: 10, color: '#475569', marginTop: 6 }}>
-            Mise à jour auto ·{' '}
-            <button onClick={refetch} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontSize: 10, padding: 0, fontWeight: 600 }}>
-              Actualiser
-            </button>
           </div>
         </div>
 
-        {/* Vérifier dépôt */}
-        {address && balance !== null && (
-          <div>
-            <button
-              onClick={checkDeposit}
-              disabled={checking}
-              style={{
-                width: '100%', padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: checking ? 'rgba(255,255,255,0.04)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                color: checking ? '#64748b' : '#fff', fontSize: 13, fontWeight: 700,
-                marginBottom: 8,
-              }}
-            >
-              {checking ? 'Vérification en cours…' : 'J\'ai envoyé — vérifier mon dépôt'}
-            </button>
+        {/* ── Credit CTA (when USDC detected) ── */}
+        {balance !== null && parseFloat(balance) > 0 && (
+          <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(34,197,94,0.03)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
+                  ${parseFloat(balance).toFixed(2)} USDC d&eacute;tect&eacute;s
+                </div>
+                <div style={{ fontSize: 11, color: '#64748b' }}>Cr&eacute;dite ton solde Betly</div>
+              </div>
+              <button
+                onClick={checkDeposit}
+                disabled={checking}
+                style={{
+                  padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: checking ? 'rgba(34,197,94,0.2)' : '#22c55e',
+                  color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0,
+                  opacity: checking ? 0.7 : 1, transition: 'all .15s',
+                }}
+              >
+                {checking ? 'V\u00e9rification\u2026' : 'Cr\u00e9diter mon compte'}
+              </button>
+            </div>
             {checkResult && (
               <div style={{
-                padding: '10px 12px', borderRadius: 8, fontSize: 12,
-                background: checkResult.error ? 'rgba(239,68,68,0.1)' : checkResult.deposited > 0 ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${checkResult.error ? 'rgba(239,68,68,0.3)' : checkResult.deposited > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                marginTop: 8, padding: '8px 12px', borderRadius: 6, fontSize: 12,
+                background: checkResult.error ? 'rgba(239,68,68,0.06)' : checkResult.deposited > 0 ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)',
                 color: checkResult.error ? '#ef4444' : checkResult.deposited > 0 ? '#22c55e' : '#64748b',
               }}>
                 {checkResult.error
                   ? `Erreur : ${checkResult.error}`
                   : checkResult.deposited > 0
-                    ? `${checkResult.deposited.toFixed(2)} USDC crédités ! Nouveau solde : ${checkResult.newBalance?.toFixed(2)} USDC`
+                    ? `\u2713 ${checkResult.deposited.toFixed(2)} USDC cr\u00e9dit\u00e9s — Nouveau solde : ${checkResult.newBalance?.toFixed(2)} USDC`
                     : checkResult.message}
               </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab switcher: Crypto / Fiat ── */}
+        <div style={{ padding: '16px 24px 0' }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e2e8', marginBottom: 12 }}>
+            {balance !== null && parseFloat(balance) > 0 ? 'Recharger' : 'Pas encore d\u2019USDC ? Choisis comment en obtenir'}
+          </div>
+          <div style={{
+            display: 'flex', gap: 0, borderRadius: 10, overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.06)', marginBottom: 16,
+          }}>
+            {[
+              { key: 'crypto', label: 'D\u00e9poser crypto', icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/>
+                </svg>
+              )},
+              { key: 'fiat', label: 'Acheter (Fiat)', icon: (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/>
+                </svg>
+              )},
+            ].map(({ key, label, icon }) => (
+              <button
+                key={key}
+                onClick={() => { setFundTab(key); setFiatProvider(null); }}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '11px 0', border: 'none', cursor: 'pointer',
+                  fontSize: 13, fontWeight: fundTab === key ? 700 : 500,
+                  background: fundTab === key ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.02)',
+                  color: fundTab === key ? '#a855f7' : '#64748b',
+                  transition: 'all .15s',
+                  borderBottom: fundTab === key ? '2px solid #a855f7' : '2px solid transparent',
+                }}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Crypto tab ── */}
+        {fundTab === 'crypto' && (
+          <div style={{ padding: '0 24px 24px' }}>
+            <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 12 }}>
+              Envoie des <strong style={{ color: '#22c55e' }}>USDC</strong> ou <strong style={{ color: '#60a5fa' }}>USDC.e</strong> depuis ton wallet ou exchange vers l'adresse ci-dessus.
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)', color: '#22c55e' }}>USDC</span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.12)', color: '#60a5fa' }}>USDC.e</span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.12)', color: '#a855f7' }}>Polygon uniquement</span>
+            </div>
+
+            {/* Bridge option */}
+            <div style={{
+              padding: '14px 16px', borderRadius: 12,
+              background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
+                Crypto sur une autre cha&icirc;ne ?
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, lineHeight: 1.5 }}>
+                Bridge tes USDC depuis Ethereum, Arbitrum, Base ou Optimism vers Polygon.
+              </div>
+              <a
+                href={`https://jumper.exchange/?toChain=137&toToken=0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359&toAddress=${address}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '9px 16px', borderRadius: 8, textDecoration: 'none',
+                  background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
+                  color: '#fff', fontSize: 12, fontWeight: 700,
+                  transition: 'opacity .15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                Ouvrir Jumper Exchange
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 17 17 7"/><path d="M7 7h10v10"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* ── Fiat tab ── */}
+        {fundTab === 'fiat' && (
+          <div style={{ padding: '0 24px 24px' }}>
+            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>
+              Ach&egrave;te des USDC avec ta carte bancaire ou un virement, puis envoie-les sur ton adresse Betly.
+            </div>
+
+            {/* Provider selection */}
+            {!fiatProvider ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[
+                  { key: 'coinbase', name: 'Coinbase', sub: 'Carte bancaire \u00b7 Virement SEPA', color: '#0052ff', letter: 'C', tag: 'Recommand\u00e9', tagColor: '#22c55e' },
+                  { key: 'binance', name: 'Binance', sub: 'Carte \u00b7 Virement \u00b7 P2P', color: '#f0b90b', letter: 'B', letterColor: '#1a1a1a', tag: 'Volumes \u00e9lev\u00e9s', tagColor: '#f59e0b' },
+                ].map(({ key, name, sub, color, letter, letterColor, tag, tagColor }) => (
+                  <button
+                    key={key}
+                    onClick={() => setFiatProvider(key)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '14px 16px', borderRadius: 12,
+                      background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                      cursor: 'pointer', textAlign: 'left', transition: 'all .15s', width: '100%',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${color}44`; e.currentTarget.style.background = `${color}08`; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
+                  >
+                    <div style={{
+                      width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+                      background: color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, fontWeight: 900, color: letterColor || '#fff',
+                    }}>{letter}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>{name}</div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>{sub}</div>
+                    </div>
+                    <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: tagColor, background: `${tagColor}12` }}>
+                      {tag}
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m9 18 6-6-6-6"/>
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* Back to providers */}
+                <button
+                  onClick={() => setFiatProvider(null)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14,
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: '#64748b', fontSize: 12, padding: 0, transition: 'color .15s',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#a855f7'}
+                  onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m15 18-6-6 6-6"/>
+                  </svg>
+                  Retour
+                </button>
+
+                {/* Coinbase detail */}
+                {fiatProvider === 'coinbase' && (
+                  <div style={{ padding: '18px', borderRadius: 12, background: 'rgba(0,82,255,0.04)', border: '1px solid rgba(0,82,255,0.12)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#0052ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff' }}>C</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Coinbase</div>
+                    </div>
+                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: '#94a3b8', lineHeight: 2.2 }}>
+                      <li>Cr&eacute;e un compte <strong style={{ color: '#e2e2e8' }}>Coinbase</strong> (pi&egrave;ce d'identit&eacute;)</li>
+                      <li>Ach&egrave;te de l'<strong style={{ color: '#22c55e' }}>USDC</strong> par carte ou virement</li>
+                      <li>Clique <strong style={{ color: '#e2e2e8' }}>Envoyer</strong> &rarr; colle ton adresse Betly</li>
+                      <li>S&eacute;lectionne le r&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong></li>
+                    </ol>
+                    <a
+                      href="https://www.coinbase.com/buy/usdc"
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '10px 18px', borderRadius: 10, textDecoration: 'none',
+                        background: '#0052ff', color: '#fff', fontSize: 13, fontWeight: 700,
+                        transition: 'opacity .15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    >
+                      Ouvrir Coinbase
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 17 17 7"/><path d="M7 7h10v10"/>
+                      </svg>
+                    </a>
+                  </div>
+                )}
+
+                {/* Binance detail */}
+                {fiatProvider === 'binance' && (
+                  <div style={{ padding: '18px', borderRadius: 12, background: 'rgba(240,185,11,0.04)', border: '1px solid rgba(240,185,11,0.12)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0b90b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#1a1a1a' }}>B</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Binance</div>
+                    </div>
+                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: '#94a3b8', lineHeight: 2.2 }}>
+                      <li>Cr&eacute;e un compte <strong style={{ color: '#e2e2e8' }}>Binance</strong> + KYC</li>
+                      <li>Ach&egrave;te de l'<strong style={{ color: '#22c55e' }}>USDC</strong> via "Acheter des cryptos"</li>
+                      <li>Portefeuille &rarr; <strong style={{ color: '#e2e2e8' }}>Retrait</strong> &rarr; USDC</li>
+                      <li>R&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong> &rarr; colle ton adresse</li>
+                    </ol>
+                    <a
+                      href="https://www.binance.com/fr/buy-sell-crypto"
+                      target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '10px 18px', borderRadius: 10, textDecoration: 'none',
+                        background: '#f0b90b', color: '#1a1a1a', fontSize: 13, fontWeight: 700,
+                        transition: 'opacity .15s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                    >
+                      Ouvrir Binance
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 17 17 7"/><path d="M7 7h10v10"/>
+                      </svg>
+                    </a>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
@@ -532,14 +603,15 @@ function DepositTab({ address, userId, betlyBalance, onWalletCreated }) {
   );
 }
 
-// ── Withdraw tab ──────────────────────────────────────────────────────────────
+// ── Withdraw tab — Polymarket-inspired ───────────────────────────────────────
 function WithdrawTab({ address, betlyBalance, userId }) {
   const [dest, setDest] = useState('');
   const [amount, setAmount] = useState('');
-  const [status, setStatus] = useState(null); // null | 'pending' | 'done' | 'error'
+  const [status, setStatus] = useState(null);
   const [msg, setMsg] = useState('');
 
-  const API = import.meta.env.VITE_API_URL || '';
+  const available = typeof betlyBalance === 'number' ? betlyBalance : 0;
+  const maxAmount = Math.max(0, Math.floor(available));
 
   async function submit() {
     if (!dest || !amount || parseFloat(amount) <= 0) return;
@@ -555,110 +627,190 @@ function WithdrawTab({ address, betlyBalance, userId }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erreur');
       setStatus('done');
-      setMsg(data.message || 'Retrait initié. Traitement sous 24h.');
+      setMsg(data.message || 'Retrait initi\u00e9. Traitement sous 24h.');
     } catch (err) {
       setStatus('error');
       setMsg(err.message);
     }
   }
 
+  function setPercentage(pct) {
+    const val = Math.floor(available * pct / 100);
+    if (val > 0) setAmount(String(val));
+  }
+
   return (
-    <div style={{ maxWidth: 420, margin: '0 auto', paddingTop: 8 }}>
+    <div style={{ maxWidth: 520, margin: '0 auto', paddingTop: 8 }}>
       <div style={{
-        background: '#111118', border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: 16, padding: 28,
+        background: '#111118', borderRadius: 16,
+        border: '1px solid rgba(255,255,255,0.06)',
+        overflow: 'hidden',
       }}>
-        <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
-          Retire tes USDC vers n'importe quelle adresse Polygon
-        </div>
-
-        {/* Balance disponible */}
-        <div style={{
-          padding: '10px 14px', borderRadius: 10, marginBottom: 20,
-          background: 'rgba(124,58,237,0.07)', border: '1px solid rgba(124,58,237,0.15)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ fontSize: 12, color: '#64748b' }}>Balance disponible</span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: '#a855f7' }}>
-            {typeof betlyBalance === 'number' ? `${betlyBalance.toFixed(2)} USDC` : '—'}
-          </span>
-        </div>
-
-        {/* Dest address */}
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>Adresse de destination</div>
-          <input
-            type="text"
-            placeholder="0x..."
-            value={dest}
-            onChange={e => setDest(e.target.value)}
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: 8,
-              background: '#0a0a0f', border: '1px solid rgba(255,255,255,0.12)',
-              color: '#f8fafc', fontSize: 13, outline: 'none', boxSizing: 'border-box',
-            }}
-          />
-        </div>
-
-        {/* Amount */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: '#64748b' }}>Montant</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#a855f7' }}>{amount || '0'} USDC</span>
+        {/* Header */}
+        <div style={{ padding: '24px 24px 0' }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: '#f8fafc', marginBottom: 4 }}>
+            Retirer des USDC
           </div>
-          <input
-            type="range" min="1" max={typeof betlyBalance === 'number' ? Math.max(1, Math.floor(betlyBalance)) : 100} step="1"
-            value={amount || 1}
-            onChange={e => setAmount(e.target.value)}
-            style={{ width: '100%', accentColor: '#a855f7', marginBottom: 8 }}
-          />
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[10, 25, 50, 100].map(a => (
+          <div style={{ fontSize: 13, color: '#64748b' }}>
+            Envoie tes USDC vers n'importe quelle adresse Polygon
+          </div>
+        </div>
+
+        {/* Available balance */}
+        <div style={{ padding: '16px 24px' }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '14px 18px', borderRadius: 12,
+            background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.1)',
+          }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Disponible</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#a855f7' }}>
+                ${available.toFixed(2)}
+              </div>
+            </div>
+            <div style={{
+              width: 40, height: 40, borderRadius: 10,
+              background: 'rgba(124,58,237,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/>
+                <path d="M12 18V6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div style={{ padding: '0 24px 24px' }}>
+          {/* Destination */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 8 }}>
+              Adresse de destination
+            </label>
+            <input
+              type="text"
+              placeholder="0x..."
+              value={dest}
+              onChange={e => setDest(e.target.value)}
+              style={{
+                width: '100%', padding: '14px 16px', borderRadius: 12,
+                background: '#0a0a0f', border: '1px solid rgba(255,255,255,0.08)',
+                color: '#f8fafc', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                transition: 'border-color .15s',
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.4)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+            />
+          </div>
+
+          {/* Amount */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>Montant</label>
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                {amount || '0'} <span style={{ color: '#64748b', fontWeight: 400 }}>USDC</span>
+              </span>
+            </div>
+            <input
+              type="number"
+              min="1"
+              max={maxAmount}
+              step="1"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0"
+              style={{
+                width: '100%', padding: '14px 16px', borderRadius: 12, marginBottom: 10,
+                background: '#0a0a0f', border: '1px solid rgba(255,255,255,0.08)',
+                color: '#f8fafc', fontSize: 20, fontWeight: 700, outline: 'none',
+                boxSizing: 'border-box', transition: 'border-color .15s',
+              }}
+              onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.4)'}
+              onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.08)'}
+            />
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[25, 50, 75, 100].map(pct => (
+                <button
+                  key={pct}
+                  onClick={() => setPercentage(pct)}
+                  style={{
+                    flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all .15s',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: amount && Math.floor(available * pct / 100) === parseInt(amount)
+                      ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
+                    color: amount && Math.floor(available * pct / 100) === parseInt(amount)
+                      ? '#a855f7' : '#64748b',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                >
+                  {pct}%
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Submit */}
+          {status === 'pending' ? (
+            <div style={{
+              textAlign: 'center', padding: '16px 0',
+              color: '#a855f7', fontSize: 14, fontWeight: 600,
+            }}>
+              Traitement en cours...
+            </div>
+          ) : status === 'done' ? (
+            <div style={{
+              textAlign: 'center', padding: '16px', borderRadius: 12,
+              background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
+              color: '#22c55e', fontSize: 14, fontWeight: 600,
+            }}>
+              {msg}
+            </div>
+          ) : (
+            <>
+              {status === 'error' && (
+                <div style={{
+                  padding: '12px 16px', borderRadius: 10, marginBottom: 12,
+                  background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
+                  color: '#ef4444', fontSize: 13,
+                }}>
+                  {msg}
+                </div>
+              )}
               <button
-                key={a}
-                onClick={() => setAmount(String(a))}
+                onClick={submit}
+                disabled={!dest || !amount || parseFloat(amount) <= 0}
                 style={{
-                  flex: 1, padding: '4px 0', borderRadius: 6, fontSize: 11, cursor: 'pointer',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  background: String(amount) === String(a) ? 'rgba(168,85,247,0.2)' : 'transparent',
-                  color: String(amount) === String(a) ? '#a855f7' : '#64748b',
+                  width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                  cursor: (!dest || !amount) ? 'not-allowed' : 'pointer',
+                  background: (!dest || !amount) ? 'rgba(124,58,237,0.2)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  color: '#fff', fontSize: 15, fontWeight: 800,
+                  opacity: (!dest || !amount) ? 0.5 : 1,
+                  transition: 'all .2s', letterSpacing: '0.3px',
+                  boxShadow: (!dest || !amount) ? 'none' : '0 4px 20px rgba(124,58,237,0.3)',
                 }}
               >
-                ${a}
+                Retirer {amount ? `$${amount}` : ''}
               </button>
-            ))}
-          </div>
+            </>
+          )}
         </div>
 
-        {/* Submit */}
-        {status === 'pending' ? (
-          <div style={{ textAlign: 'center', padding: '12px 0', color: '#a855f7', fontSize: 13 }}>Traitement en cours…</div>
-        ) : status === 'done' ? (
-          <div style={{ textAlign: 'center', padding: '12px 0', color: '#22c55e', fontSize: 13 }}>✓ {msg}</div>
-        ) : (
-          <>
-            {status === 'error' && (
-              <div style={{ padding: '8px 12px', borderRadius: 8, marginBottom: 10, background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: 12 }}>
-                {msg}
-              </div>
-            )}
-            <button
-              onClick={submit}
-              disabled={!dest || !amount}
-              style={{
-                width: '100%', padding: '10px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                color: '#fff', fontSize: 13, fontWeight: 700,
-                opacity: (!dest || !amount) ? 0.5 : 1,
-              }}
-            >
-              Retirer {amount ? `${amount} USDC` : ''}
-            </button>
-          </>
-        )}
-
-        <div style={{ marginTop: 14, fontSize: 11, color: '#475569', lineHeight: 1.6 }}>
-          Vérifie l'adresse de destination. Les transactions blockchain sont irréversibles.
+        {/* Footer warning */}
+        <div style={{
+          padding: '14px 24px', borderTop: '1px solid rgba(255,255,255,0.04)',
+          display: 'flex', gap: 10, alignItems: 'flex-start',
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+            <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+          </svg>
+          <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.6 }}>
+            V&eacute;rifie bien l'adresse avant d'envoyer. Les transactions blockchain sont irr&eacute;versibles.
+          </div>
         </div>
       </div>
     </div>
