@@ -33,7 +33,29 @@ export default function BetlyLoader({ size = 120, text, style }) {
   );
 }
 
+// Loader centré pour les pages (pas fixe — ne bloque pas le layout)
 export function BetlyLoaderFullPage({ text = 'Chargement...' }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center',
+      minHeight: '50vh', gap: 16,
+    }}>
+      <video
+        autoPlay loop muted playsInline
+        poster="/betly-icon.png"
+        style={{ width: 90, height: 90, borderRadius: 20, objectFit: 'cover', display: 'block' }}
+      >
+        <source src="/betly-loader.mp4" type="video/mp4" />
+        <img src="/betly-icon.png" alt="BETLY" style={{ width: 90, height: 90, borderRadius: 20 }} />
+      </video>
+      <div style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>{text}</div>
+    </div>
+  );
+}
+
+// Splash plein écran — uniquement pour l'init de l'app (App.jsx)
+export function BetlySplashScreen() {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 9999,
@@ -56,8 +78,7 @@ export function BetlyLoaderFullPage({ text = 'Chargement...' }) {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-
-      <div style={{ position: 'relative', animation: 'bl-glow 2s ease-in-out infinite' }}>
+      <div style={{ animation: 'bl-glow 2s ease-in-out infinite' }}>
         <video
           autoPlay loop muted playsInline
           poster="/betly-icon.png"
@@ -67,7 +88,6 @@ export function BetlyLoaderFullPage({ text = 'Chargement...' }) {
           <img src="/betly-icon.png" alt="BETLY" style={{ width: 110, height: 110, borderRadius: 26 }} />
         </video>
       </div>
-
       <div style={{ textAlign: 'center', animation: 'bl-fadein 0.5s ease 0.3s both' }}>
         <div style={{
           fontSize: 18, fontWeight: 900, letterSpacing: 4,
@@ -82,9 +102,6 @@ export function BetlyLoaderFullPage({ text = 'Chargement...' }) {
             animation: 'bl-bar 1.6s ease-in-out forwards',
           }} />
         </div>
-        {text !== 'Chargement...' && (
-          <div style={{ marginTop: 10, fontSize: 12, color: '#475569', fontWeight: 500 }}>{text}</div>
-        )}
       </div>
     </div>
   );

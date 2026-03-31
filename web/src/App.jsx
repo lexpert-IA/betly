@@ -34,7 +34,7 @@ import SharePage from './pages/SharePage';
 import AgentsPage from './pages/AgentsPage';
 import DocsPage from './pages/DocsPage';
 import AgeVerification from './components/AgeVerification';
-import { BetlyLoaderFullPage } from './components/BetlyLoader';
+import { BetlyLoaderFullPage, BetlySplashScreen } from './components/BetlyLoader';
 
 const DYNAMIC_ENV_ID = (import.meta.env.VITE_DYNAMIC_ENV_ID || '043ee6c8-bac8-4266-8345-794bb7a378a7').trim();
 
@@ -189,7 +189,7 @@ function getPage() {
 // Guard for pages that require auth — shows message with login button (no auto-popup)
 function AuthGuard({ children }) {
   const { user, loading, openAuth } = useAuth();
-  if (loading) return <BetlyLoaderFullPage text="Connexion..." />;
+  if (loading) return <BetlySplashScreen />;
   if (!user) return (
     <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 16px', textAlign: 'center' }}>
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 12 }}>
