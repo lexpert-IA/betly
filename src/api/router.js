@@ -1190,6 +1190,26 @@ router.post('/markets/:id/bet', checkCircuitBreaker, geoblock, async (req, res) 
       });
     }
 
+    // ── Auto-post in social feed ──────────────────────────────────────────────
+    try {
+      const betText = `${side === 'YES' ? 'OUI' : 'NON'} sur "${market.title.slice(0, 120)}" — ${filledAmount} USDC`;
+      await Post.create({
+        userId,
+        username: user?.username || 'anon',
+        displayName: user?.displayName || user?.username || 'anon',
+        avatarColor: user?.avatarColor || '#7c3aed',
+        googlePhotoUrl: user?.googlePhotoUrl || null,
+        verified: user?.level === 'oracle' || user?.level === 'legende',
+        text: betText,
+        marketId: id,
+        isBetPost: true,
+        betAmount: filledAmount,
+        betSide: side,
+      });
+    } catch (e) {
+      logger.warn(`Auto-post on bet failed: ${e.message}`);
+    }
+
     logger.info(`Bet placed: ${userId} ${side} ${filledAmount} USDC on market ${id}${isPartial ? ' (partial)' : ''}`);
     cb.recordSuccess();
 

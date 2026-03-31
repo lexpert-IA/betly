@@ -18,6 +18,11 @@ const PostSchema = new mongoose.Schema({
   text:       { type: String, required: true, maxlength: 500 },
   marketId:   { type: mongoose.Schema.Types.ObjectId, ref: 'Market', default: null },
 
+  // Auto-generated bet posts
+  isBetPost:  { type: Boolean, default: false },
+  betAmount:  { type: Number, default: null },
+  betSide:    { type: String, enum: ['YES', 'NO', null], default: null },
+
   // Reactions (no comments — expression only)
   likes:      { type: [String], default: [] },   // userIds who liked
   dislikes:   { type: [String], default: [] },   // userIds who disliked

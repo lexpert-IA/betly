@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { apiFetch } from '../lib/api';
 import BetlyLoader from './BetlyLoader';
 import {
-  Heart, ThumbsDown, Star, BarChart3, Send, Loader2,
+  Heart, ThumbsDown, Star, BarChart3, Send, Loader2, Zap,
   Share, MoreHorizontal, Image, Smile, MapPin, ChartBar,
   Bot, User as UserIcon, Users, Rss, Copy,
 } from 'lucide-react';
@@ -110,16 +110,10 @@ function PostComposer({ user, onPost }) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)',
             }}>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {[Image, Smile, ChartBar, MapPin].map((Icon, i) => (
-                  <button key={i} style={{
-                    background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 999,
-                    color: '#7c3aed', opacity: 0.5, transition: 'opacity .15s',
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
-                  ><Icon size={18} strokeWidth={1.5} /></button>
-                ))}
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#536471' }}>
+                  {text.length > 0 && `${text.length}/${maxLen}`}
+                </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 {hasText && (
@@ -181,7 +175,26 @@ function ReactBtn({ icon: Icon, count, active, activeColor, hoverBg, onClick, la
   );
 }
 
-// ── Single post — supports agent & human ─────────────────────────────────────
+// ── Bet badge (for auto-generated bet posts) ────────────────────────────────
+function BetBadge({ side, amount }) {
+  const isYes = side === 'YES';
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      padding: '2px 8px', borderRadius: 6,
+      background: isYes ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.1)',
+      border: `1px solid ${isYes ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.2)'}`,
+      fontSize: 11, fontWeight: 700,
+      color: isYes ? '#22c55e' : '#ef4444',
+      lineHeight: 1.4, flexShrink: 0,
+    }}>
+      <Zap size={10} strokeWidth={2.5} />
+      {amount} USDC · {isYes ? 'OUI' : 'NON'}
+    </span>
+  );
+}
+
+// ── Single post — supports agent, human & bet posts ─────────────────────────
 function PostItem({ post, userId, onReact }) {
   const [hovered, setHovered] = useState(false);
   const userLiked = post.likes?.includes(userId) || false;
@@ -189,6 +202,7 @@ function PostItem({ post, userId, onReact }) {
   const userStarred = post.stars?.includes(userId) || false;
   const isSeed = post._id?.startsWith('seed');
   const isAgent = post.isAgent || post.userId?.startsWith('agent:') || post._id?.startsWith('seed-agent');
+  const isBet = post.isBetPost || false;
 
   const m = post.marketId && typeof post.marketId === 'object' ? post.marketId : null;
   const yesP = m && m.totalYes != null ? Math.round((m.totalYes / ((m.totalYes || 0) + (m.totalNo || 0) || 1)) * 100) : null;
@@ -225,7 +239,7 @@ function PostItem({ post, userId, onReact }) {
               {isAgent ? <Bot size={22} strokeWidth={2} /> : (post.displayName || post.username || '?')[0].toUpperCase()}
             </div>
           )}
-          {/* Small robot indicator on avatar */}
+          {/* Small indicator on avatar */}
           {isAgent && (
             <div style={{
               position: 'absolute', bottom: -2, right: -2,
@@ -236,12 +250,24 @@ function PostItem({ post, userId, onReact }) {
               <Bot size={9} color="#fff" strokeWidth={3} />
             </div>
           )}
+          {isBet && !isAgent && (
+            <div style={{
+              position: 'absolute', bottom: -2, right: -2,
+              width: 16, height: 16, borderRadius: '50%',
+              background: post.betSide === 'YES' ? '#22c55e' : '#ef4444',
+              border: '2px solid #0a0a0f',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Zap size={9} color="#fff" strokeWidth={3} />
+            </div>
+          )}
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Header row */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2, overflow: 'hidden' }}>
             {isAgent && <AgentBadge />}
+            {isBet && !isAgent && <BetBadge side={post.betSide} amount={post.betAmount} />}
             <span style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', whiteSpace: 'nowrap' }}>
               {post.displayName || post.username}
             </span>
@@ -290,15 +316,17 @@ function PostItem({ post, userId, onReact }) {
             <a href={`/market/${m._id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block', marginBottom: 10 }}
               onClick={e => e.stopPropagation()}>
               <div style={{
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, overflow: 'hidden',
-                background: 'rgba(255,255,255,0.03)', transition: 'border-color .15s',
+                border: `1px solid ${isBet ? (post.betSide === 'YES' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)') : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: 16, overflow: 'hidden',
+                background: isBet ? (post.betSide === 'YES' ? 'rgba(34,197,94,0.03)' : 'rgba(239,68,68,0.03)') : 'rgba(255,255,255,0.03)',
+                transition: 'border-color .15s',
               }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(168,85,247,0.3)'}
-                onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={e => e.currentTarget.style.borderColor = isBet ? (post.betSide === 'YES' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)') : 'rgba(255,255,255,0.1)'}
               >
                 <div style={{ padding: '14px 16px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <BarChart3 size={14} color="#a855f7" strokeWidth={2.5} />
+                    {isBet ? <Zap size={14} color={post.betSide === 'YES' ? '#22c55e' : '#ef4444'} strokeWidth={2.5} /> : <BarChart3 size={14} color="#a855f7" strokeWidth={2.5} />}
                     <span style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9', lineHeight: 1.3 }}>
                       {m.question || m.title}
                     </span>
@@ -306,13 +334,17 @@ function PostItem({ post, userId, onReact }) {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{
                       flex: 1, padding: '10px 0', borderRadius: 10, textAlign: 'center',
-                      background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
+                      background: isBet && post.betSide === 'YES' ? 'rgba(34,197,94,0.18)' : 'rgba(34,197,94,0.1)',
+                      border: `1px solid ${isBet && post.betSide === 'YES' ? 'rgba(34,197,94,0.35)' : 'rgba(34,197,94,0.2)'}`,
                       color: '#22c55e', fontSize: 14, fontWeight: 700,
+                      boxShadow: isBet && post.betSide === 'YES' ? '0 0 12px rgba(34,197,94,0.15)' : 'none',
                     }}>OUI {yesP}%</div>
                     <div style={{
                       flex: 1, padding: '10px 0', borderRadius: 10, textAlign: 'center',
-                      background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
+                      background: isBet && post.betSide === 'NO' ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.08)',
+                      border: `1px solid ${isBet && post.betSide === 'NO' ? 'rgba(239,68,68,0.3)' : 'rgba(239,68,68,0.15)'}`,
                       color: '#ef4444', fontSize: 14, fontWeight: 700,
+                      boxShadow: isBet && post.betSide === 'NO' ? '0 0 12px rgba(239,68,68,0.12)' : 'none',
                     }}>NON {100 - yesP}%</div>
                   </div>
                 </div>
@@ -339,6 +371,22 @@ function PostItem({ post, userId, onReact }) {
               }}>
                 <Copy size={12} /> Copier ce trade
               </button>
+            </div>
+          )}
+
+          {/* Bet post CTA — follow this bet */}
+          {isBet && !isAgent && m && (
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <a href={`/market/${m._id}`} onClick={e => e.stopPropagation()} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 14px', borderRadius: 10, textDecoration: 'none',
+                background: post.betSide === 'YES' ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+                border: `1px solid ${post.betSide === 'YES' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                color: post.betSide === 'YES' ? '#22c55e' : '#ef4444',
+                fontSize: 12, fontWeight: 600, transition: 'all .15s',
+              }}>
+                <Zap size={12} /> Parier aussi
+              </a>
             </div>
           )}
 
@@ -421,6 +469,7 @@ const SEED_POSTS = [
 // ── Feed filter tabs ─────────────────────────────────────────────────────────
 const FEED_FILTERS = [
   { key: 'all',    label: 'Tout',     Icon: Rss },
+  { key: 'bets',   label: 'Paris',    Icon: Zap },
   { key: 'humans', label: 'Humains',  Icon: UserIcon },
   { key: 'agents', label: 'Agents',   Icon: Bot },
 ];
@@ -490,8 +539,9 @@ export default function SocialFeed({ isMobile }) {
 
   // Apply filter
   const filtered = filterTab === 'all' ? posts
+    : filterTab === 'bets' ? posts.filter(p => p.isBetPost)
     : filterTab === 'agents' ? posts.filter(p => p.isAgent || p.userId?.startsWith('agent:') || p._id?.startsWith('seed-agent'))
-    : posts.filter(p => !p.isAgent && !p.userId?.startsWith('agent:') && !p._id?.startsWith('seed-agent'));
+    : posts.filter(p => !p.isAgent && !p.userId?.startsWith('agent:') && !p._id?.startsWith('seed-agent') && !p.isBetPost);
 
   return (
     <div style={{
