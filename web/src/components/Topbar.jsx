@@ -7,9 +7,10 @@ import WalletButton from './WalletButton';
 import { toast } from './ToastManager';
 
 const LINKS = [
-  { label: 'Marchés',     path: '/'            },
-  { label: 'BETLY Copy',  path: '/copy'         },
-  { label: 'Leaderboard', path: '/leaderboard'  },
+  { label: 'Explorer',      path: '/',            icon: '◎' },
+  { label: 'Copy Trading',  path: '/copy',        icon: '⚡' },
+  { label: 'Classement',    path: '/leaderboard', icon: '🏆' },
+  { label: 'Agents IA',     path: '/agents',      icon: '🤖' },
 ];
 
 export default function Topbar({ walletDisabled = false }) {
@@ -71,17 +72,49 @@ export default function Topbar({ walletDisabled = false }) {
 
       {/* Nav — hidden on mobile (uses BottomNav instead) */}
       {!isMobile && (
-        <nav style={{ display: 'flex', gap: 2, flex: 1 }}>
-          {LINKS.map(({ label, path }) => {
+        <nav style={{ display: 'flex', gap: 6, flex: 1, justifyContent: 'center' }}>
+          {LINKS.map(({ label, path, icon }) => {
             const isActive = path === '/' ? currentPath === '/' : currentPath.startsWith(path);
             return (
-              <a key={path} href={path} style={{
-                textDecoration: 'none', padding: '6px 11px', borderRadius: 6,
-                fontSize: 13, fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#a78bfa' : '#9090a0',
-                background: isActive ? 'rgba(167,139,250,0.1)' : 'transparent',
-                transition: 'all .15s', whiteSpace: 'nowrap',
-              }}>
+              <a
+                key={path}
+                href={path}
+                style={{
+                  textDecoration: 'none',
+                  padding: '7px 18px',
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#fff' : '#8888a0',
+                  background: isActive
+                    ? 'linear-gradient(135deg, rgba(124,58,237,0.25), rgba(168,85,247,0.15))'
+                    : 'transparent',
+                  border: isActive
+                    ? '1px solid rgba(168,85,247,0.3)'
+                    : '1px solid transparent',
+                  transition: 'all .2s',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  letterSpacing: '0.2px',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = '#c4b5fd';
+                    e.currentTarget.style.background = 'rgba(124,58,237,0.08)';
+                    e.currentTarget.style.border = '1px solid rgba(124,58,237,0.15)';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.color = '#8888a0';
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.border = '1px solid transparent';
+                  }
+                }}
+              >
+                <span style={{ fontSize: 14 }}>{icon}</span>
                 {label}
               </a>
             );
@@ -265,13 +298,23 @@ export default function Topbar({ walletDisabled = false }) {
           <button
             onClick={openAuth}
             style={{
-              padding: '7px 16px', borderRadius: 8,
+              padding: '8px 22px', borderRadius: 10,
               background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
               color: '#fff', border: 'none', cursor: 'pointer',
-              fontSize: 13, fontWeight: 700,
+              fontSize: 13, fontWeight: 700, letterSpacing: '0.3px',
+              boxShadow: '0 2px 12px rgba(124,58,237,0.35)',
+              transition: 'all .2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.boxShadow = '0 4px 20px rgba(124,58,237,0.5)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.boxShadow = '0 2px 12px rgba(124,58,237,0.35)';
+              e.currentTarget.style.transform = 'translateY(0)';
             }}
           >
-            Se connecter
+            Rejoindre
           </button>
         )}
       </div>
