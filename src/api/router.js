@@ -4271,6 +4271,29 @@ router.get('/copy/stats', async (req, res) => {
   }
 });
 
+// ─── POST /api/telegram/link-code ─────────────────────────────────────────────
+// Generates a 6-char code to link Telegram account to Betly user
+router.post('/telegram/link-code', async (req, res) => {
+  try {
+    if (!req.dbUser) return res.status(401).json({ error: 'Authentification requise' });
+
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+    await User.findByIdAndUpdate(req.dbUser._id, {
+      linkCode:       code,
+      linkCodeExpiry: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+    });
+
+    logger.info(`Telegram link code generated for user ${req.dbUser._id}: ${code}`);
+    res.json({ code });
+  } catch (err) {
+    logger.error(`POST /telegram/link-code error: ${err.message}`);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ── FIN COPY TRADE ──────────────────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════

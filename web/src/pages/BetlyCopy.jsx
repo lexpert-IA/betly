@@ -360,8 +360,59 @@ function SetupBanner({ user, config, onActivate }) {
 
 // ── Tab: Dashboard ────────────────────────────────────────────────────────────
 
+// ── Sparkline SVG ────────────────────────────────────────────────────────────
+
+function Sparkline({ trades, width = 280, height = 48 }) {
+  if (!trades || trades.length < 2) {
+    return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted }}>Pas assez de données</div>;
+  }
+
+  // Build cumulative PnL points from oldest to newest
+  const sorted = [...trades].filter(t => t.pnl != null).reverse();
+  if (sorted.length < 2) {
+    return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted }}>Pas assez de données</div>;
+  }
+
+  let cumul = 0;
+  const points = sorted.map(t => { cumul += t.pnl; return cumul; });
+
+  const min = Math.min(...points, 0);
+  const max = Math.max(...points, 0);
+  const range = max - min || 1;
+  const pad = 4;
+
+  const coords = points.map((v, i) => {
+    const x = pad + (i / (points.length - 1)) * (width - pad * 2);
+    const y = pad + (1 - (v - min) / range) * (height - pad * 2);
+    return `${x},${y}`;
+  });
+
+  const color = cumul >= 0 ? '#22c55e' : '#ef4444';
+  const zeroY = pad + (1 - (0 - min) / range) * (height - pad * 2);
+
+  return (
+    <svg width={width} height={height} style={{ display: 'block' }}>
+      <line x1={pad} y1={zeroY} x2={width - pad} y2={zeroY} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+      <polyline fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" points={coords.join(' ')} />
+      <circle cx={coords[coords.length - 1].split(',')[0]} cy={coords[coords.length - 1].split(',')[1]} r={3} fill={color} />
+    </svg>
+  );
+}
+
 function TabDashboard({ stats, config, trades, onTabChange }) {
   const recent = (trades?.trades || []).slice(0, 5);
+  const allTrades = trades?.trades || [];
+
+  // Auto-copy toast: detect new trades since last check
+  const lastTradeRef = useRef(null);
+  useEffect(() => {
+    if (allTrades.length === 0) return;
+    const newest = allTrades[0];
+    if (lastTradeRef.current && newest._id !== lastTradeRef.current && newest.mode === 'auto') {
+      toast(`Auto-copie : ${newest.outcome === 'YES' ? 'OUI' : 'NON'} ${fmt(newest.amount)} USDC sur "${(newest.marketTitle || '').slice(0, 35)}"`, 'success');
+    }
+    lastTradeRef.current = newest._id;
+  }, [allTrades]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -376,6 +427,16 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
         <StatBox label="Trades copiés" value={stats?.executedTrades || 0} sub={stats?.paperMode ? 'mode papier' : 'réels'} />
         <StatBox label="Whales suivies" value={stats?.followedCount || 0} sub="actives" />
       </div>
+
+      {/* PnL Sparkline */}
+      {allTrades.some(t => t.pnl != null) && (
+        <div style={{ ...card, padding: '14px 18px' }}>
+          <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 10 }}>
+            PnL cumulé
+          </div>
+          <Sparkline trades={allTrades} width={480} height={56} />
+        </div>
+      )}
 
       {/* Mode + état */}
       <div style={{ ...card, padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -1068,6 +1129,10 @@ function TabSettings({ config, onConfigUpdate }) {
         </div>
       </Section>
 
+      <Section title="Telegram">
+        <TelegramLink />
+      </Section>
+
       <button onClick={save} disabled={saving} style={{
         width: '100%', padding: '13px', borderRadius: 12, border: 'none',
         background: saved ? 'linear-gradient(135deg, #16a34a, #22c55e)' : saving ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
@@ -1081,6 +1146,71 @@ function TabSettings({ config, onConfigUpdate }) {
   );
 }
 
+// ── Telegram Link Widget ─────────────────────────────────────────────────────
+
+function TelegramLink() {
+  const { user } = useAuth();
+  const [code, setCode]       = useState(null);
+  const [loading, setLoading] = useState(false);
+  const linked = !!user?.telegramId;
+
+  async function generateCode() {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/api/telegram/link-code', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setCode(data.code);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (linked) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, background: 'rgba(34,197,94,0.06)' }}>
+        <span style={{ fontSize: 20 }}>✅</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>Telegram lié</div>
+          <div style={{ fontSize: 11, color: C.muted }}>ID : {user.telegramId}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(255,255,255,0.03)' }}>
+      <div style={{ fontSize: 13, color: C.dim, marginBottom: 10, lineHeight: 1.6 }}>
+        Lie ton compte Telegram pour recevoir les alertes et gérer tes copies depuis le bot.
+      </div>
+      {code ? (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Envoie cette commande au bot :</div>
+          <div style={{
+            padding: '10px 18px', borderRadius: 8, background: 'rgba(124,58,237,0.1)',
+            border: '1px solid rgba(124,58,237,0.3)', display: 'inline-block',
+            fontFamily: 'monospace', fontSize: 15, fontWeight: 800, color: C.purpleL, letterSpacing: '.05em',
+          }}>
+            /link {code}
+          </div>
+          <div style={{ fontSize: 10, color: C.muted, marginTop: 8 }}>Expire dans 10 minutes</div>
+        </div>
+      ) : (
+        <button onClick={generateCode} disabled={loading} className="btn-press" style={{
+          width: '100%', padding: '10px', borderRadius: 10, border: 'none',
+          background: loading ? 'rgba(124,58,237,0.3)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+          color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
+          transition: 'all .2s',
+        }}>
+          {loading ? 'Génération…' : '🔗 Générer un code de liaison'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function BetlyCopy() {
@@ -1090,7 +1220,7 @@ export default function BetlyCopy() {
 
   const { data: statsData, loading: statsLoading } = useApi('/api/copy/stats',  30000);
   const { data: cfgData,   loading: cfgLoading   } = useApi('/api/copy/config');
-  const { data: tradesData                        } = useApi('/api/copy/trades?limit=5');
+  const { data: tradesData                        } = useApi('/api/copy/trades?limit=50', 15000);
 
   useEffect(() => { if (cfgData?.config) setConfig(cfgData.config); }, [cfgData]);
 

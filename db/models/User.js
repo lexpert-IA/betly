@@ -8,6 +8,8 @@ const UserSchema = new mongoose.Schema({
   authProvider:    { type: String, enum: ['google', 'email', 'anonymous', 'telegram'], default: 'email' },
 
   telegramId:      { type: String, unique: true, sparse: true },
+  linkCode:        { type: String, default: null },
+  linkCodeExpiry:  { type: Date,   default: null },
   username:        String,
   displayName:     String,
   walletAddress:       String,
