@@ -100,6 +100,16 @@ async function resolveUserId(req, res, next) {
       }
     }
   }
+
+  // Fallback: telegramId query param (for Telegram bot cockpit access)
+  if (!req.dbUser && req.query.telegramId) {
+    const user = await User.findOne({ telegramId: String(req.query.telegramId) }).lean();
+    if (user) {
+      req.query.userId = user._id.toString();
+      req.dbUser = user;
+    }
+  }
+
   next();
 }
 

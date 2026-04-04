@@ -773,36 +773,92 @@ function TabTrades() {
 
 // ── Tab: Alertes ──────────────────────────────────────────────────────────────
 
-function TabAlerts({ config }) {
+function TabAlerts({ config, trades }) {
   const { data, loading } = useApi('/api/copy/alerts?limit=40', 5000);
   const alerts = data?.alerts || [];
-  const followed = new Set((config?.followedWallets || []).map(w => w.address));
+  const followed = new Set((config?.followedWallets || []).map(w => w.address?.toLowerCase()));
+  const [filterMine, setFilterMine] = useState(false);
+  const [copyAlert, setCopyAlert] = useState(null);
+  const [copyAmt, setCopyAmt] = useState('10');
+  const [copyLoading, setCopyLoading] = useState(false);
+
+  // Track which alerts were auto-copied
+  const copiedKeys = new Set(
+    (trades?.trades || [])
+      .filter(t => t.mode === 'auto' && t.status === 'executed')
+      .map(t => `${t.whaleAddress?.toLowerCase()}-${t.marketId}`)
+  );
+
+  const displayed = filterMine
+    ? alerts.filter(a => followed.has(a.walletAddress?.toLowerCase()))
+    : alerts;
+
+  async function handleCopy() {
+    if (!copyAlert) return;
+    setCopyLoading(true);
+    try {
+      const res = await apiFetch('/api/copy/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          whaleAddress: copyAlert.walletAddress,
+          marketId: copyAlert.marketId || copyAlert.id,
+          marketTitle: copyAlert.question || copyAlert.marketTitle || '',
+          outcome: copyAlert.outcome || copyAlert.side || 'YES',
+          amount: parseFloat(copyAmt),
+          price: copyAlert.price || 0,
+        }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Erreur');
+      toast(`Trade copié ! ${copyAlert.side === 'YES' ? 'OUI' : 'NON'} $${copyAmt}`, 'success');
+      setCopyAlert(null);
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      setCopyLoading(false);
+    }
+  }
 
   return (
     <div style={card}>
       <div style={{
         padding: '12px 18px', borderBottom: `1px solid ${C.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
       }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Trades détectés en temps réel</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#22c55e' }}>
-          <Dot active /> Polling 5s
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => setFilterMine(v => !v)}
+            style={{
+              padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${filterMine ? C.purpleL : C.border}`,
+              background: filterMine ? 'rgba(124,58,237,0.15)' : 'transparent',
+              color: filterMine ? C.purpleL : C.muted, transition: 'all .15s',
+            }}
+          >
+            {filterMine ? '★ Mes whales' : '☆ Mes whales'}
+          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#22c55e' }}>
+            <Dot active /> Polling 5s
+          </div>
         </div>
       </div>
       {loading ? (
         <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {[...Array(5)].map((_, i) => <Skeleton key={i} h={56} />)}
         </div>
-      ) : alerts.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <div style={{ padding: '48px', textAlign: 'center', color: C.muted, fontSize: 13 }}>
-          En attente de trades… · Polling actif
+          {filterMine ? 'Aucun trade de tes whales pour le moment' : 'En attente de trades… · Polling actif'}
         </div>
-      ) : alerts.map((a, i) => {
-        const isFollowed = followed.has(a.walletAddress);
+      ) : displayed.map((a, i) => {
+        const isFollowed = followed.has(a.walletAddress?.toLowerCase());
+        const autoCopied = copiedKeys.has(`${a.walletAddress?.toLowerCase()}-${a.marketId || a.id}`);
         return (
-          <div key={a._id || i} style={{
+          <div key={a._id || a.id || i} style={{
             display: 'flex', gap: 12, padding: '12px 18px', alignItems: 'flex-start',
-            borderBottom: i < alerts.length - 1 ? `1px solid ${C.border}` : 'none',
+            borderBottom: i < displayed.length - 1 ? `1px solid ${C.border}` : 'none',
             background: isFollowed ? 'rgba(124,58,237,0.03)' : 'transparent',
           }}>
             <div style={{
@@ -816,22 +872,104 @@ function TabAlerts({ config }) {
               <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>
                 <span style={{ fontFamily: 'monospace', color: C.dim }}>{short(a.walletAddress)}</span>
                 {' → '}
-                <span style={{ fontWeight: 800, color: a.side === 'YES' ? '#22c55e' : '#f59e0b' }}>
-                  {a.side === 'YES' ? 'OUI' : 'NON'}
+                <span style={{ fontWeight: 800, color: a.side === 'YES' || a.outcome === 'Yes' ? '#22c55e' : '#f59e0b' }}>
+                  {a.side === 'YES' || a.outcome === 'Yes' ? 'OUI' : 'NON'}
                 </span>
                 {' '}
                 <span style={{ fontWeight: 700, color: C.text }}>{a.amount || '?'} USDC</span>
                 {' sur '}
-                <span style={{ color: C.muted }}>{(a.marketTitle || '').slice(0, 50)}</span>
+                <span style={{ color: C.muted }}>{(a.question || a.marketTitle || '').slice(0, 50)}</span>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
-                <span style={{ fontSize: 10, color: C.muted }}>{relTime(a.time || a.createdAt)}</span>
+                <span style={{ fontSize: 10, color: C.muted }}>{relTime(a.time || a.createdAt || a.detectedAt)}</span>
                 {isFollowed && <Badge color={C.purpleL} style={{ fontSize: 9 }}>Suivi</Badge>}
+                {autoCopied && <Badge color="#22c55e" style={{ fontSize: 9 }}>Auto-copié</Badge>}
+                {isFollowed && !autoCopied && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setCopyAlert(a); setCopyAmt(String(config?.maxPerTrade || 10)); }}
+                    className="btn-press"
+                    style={{
+                      padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                      background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)',
+                      color: '#a855f7', transition: 'all .15s',
+                    }}
+                  >
+                    Copier
+                  </button>
+                )}
               </div>
             </div>
           </div>
         );
       })}
+
+      {/* Quick copy modal */}
+      {copyAlert && (
+        <>
+          <div onClick={() => setCopyAlert(null)} style={{ position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)' }} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            zIndex: 801, width: 340, maxWidth: 'calc(100vw - 32px)',
+            background: C.card, border: `1px solid rgba(124,58,237,0.35)`,
+            borderRadius: 18, padding: 24,
+            boxShadow: '0 32px 80px rgba(0,0,0,.8), 0 0 40px rgba(124,58,237,0.1)',
+            animation: 'modal-in .2s ease',
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 6 }}>Copier ce trade</div>
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
+              <span style={{ fontFamily: 'monospace' }}>{short(copyAlert.walletAddress)}</span>
+              {' → '}
+              <span style={{ fontWeight: 700, color: (copyAlert.side === 'YES' || copyAlert.outcome === 'Yes') ? '#22c55e' : '#f59e0b' }}>
+                {(copyAlert.side === 'YES' || copyAlert.outcome === 'Yes') ? 'OUI' : 'NON'}
+              </span>
+              {' · '}
+              {(copyAlert.question || copyAlert.marketTitle || '').slice(0, 45)}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, color: C.dim }}>Montant</span>
+                <span style={{ fontSize: 13, fontWeight: 800, color: C.purpleL }}>${copyAmt} USDC</span>
+              </div>
+              <input
+                type="range" min="1" max={config?.maxPerTrade || 100} step="1"
+                value={copyAmt}
+                onChange={e => setCopyAmt(e.target.value)}
+                style={{ width: '100%', accentColor: C.purpleL }}
+              />
+              <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+                {[5, 10, 25, 50].map(a => (
+                  <button key={a} onClick={() => setCopyAmt(String(a))} style={{
+                    flex: 1, padding: '3px 0', borderRadius: 5, fontSize: 10, cursor: 'pointer',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: String(copyAmt) === String(a) ? 'rgba(168,85,247,0.2)' : 'transparent',
+                    color: String(copyAmt) === String(a) ? '#a855f7' : '#64748b',
+                  }}>
+                    ${a}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setCopyAlert(null)} style={{
+                flex: 1, padding: '10px', borderRadius: 10,
+                background: 'rgba(255,255,255,0.04)', border: `1px solid ${C.border}`,
+                color: C.muted, cursor: 'pointer', fontSize: 12,
+              }}>Annuler</button>
+              <button onClick={handleCopy} disabled={copyLoading} className="btn-press" style={{
+                flex: 2, padding: '10px', borderRadius: 10, border: 'none',
+                background: copyLoading ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+                color: '#fff', cursor: copyLoading ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 800,
+                boxShadow: copyLoading ? 'none' : '0 0 20px rgba(124,58,237,0.4)',
+                transition: 'all .2s',
+              }}>
+                {copyLoading ? 'Envoi…' : `Confirmer $${copyAmt}`}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1067,7 +1205,7 @@ export default function BetlyCopy() {
             />
           )}
           {tab === 'trades'   && <TabTrades />}
-          {tab === 'alerts'   && <TabAlerts config={config} />}
+          {tab === 'alerts'   && <TabAlerts config={config} trades={tradesData} />}
           {tab === 'settings' && (
             <TabSettings config={config || {}} onConfigUpdate={setConfig} />
           )}

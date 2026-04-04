@@ -20,6 +20,9 @@ const logger   = require('../utils/logger');
 
 const anthropic = new Anthropic({ apiKey: config.anthropic.apiKey });
 const { sendMarketResolved } = require('../utils/email');
+const CopyTrade  = require('../../db/models/CopyTrade');
+const CopyConfig = require('../../db/models/CopyConfig');
+const Notification = require('../../db/models/Notification');
 
 // ── Level 1 : CoinGecko ──────────────────────────────────────────────────────
 
@@ -195,6 +198,70 @@ async function distributePayout(market, outcome) {
   logger.info(`resolver: payout — pool ${pool} USDC — ${winners.length} gagnant(s) / ${losers.length} perdant(s)`);
 }
 
+// ── Copy Trade PnL resolution ────────────────────────────────────────────────
+
+async function resolveCopyTrades(market, outcome) {
+  try {
+    const trades = await CopyTrade.find({
+      marketId: market._id.toString(),
+      status: { $in: ['executed', 'paper'] },
+      resolvedAt: null,
+    });
+
+    if (trades.length === 0) return;
+
+    for (const trade of trades) {
+      const won = trade.outcome === outcome;
+      let pnl;
+
+      if (won) {
+        // Payout based on entry price: amount / price gives shares, each worth $1 if won
+        const payout = trade.price > 0 ? trade.amount / trade.price : trade.amount * 2;
+        pnl = Math.round((payout - trade.amount) * 100) / 100;
+      } else {
+        pnl = -trade.amount;
+      }
+
+      trade.pnl = pnl;
+      trade.resolvedAt = new Date();
+      await trade.save();
+
+      // Update user balance (only for real executed trades)
+      if (trade.status === 'executed') {
+        const update = { $inc: { lockedBalance: -trade.amount } };
+        if (won) {
+          const payout = trade.amount + pnl;
+          update.$inc.balance = payout; // return amount + profit
+        }
+        await User.findByIdAndUpdate(trade.userId, update);
+      }
+
+      // Update CopyConfig totalPnl
+      await CopyConfig.findOneAndUpdate(
+        { userId: trade.userId },
+        { $inc: { totalPnl: pnl } }
+      );
+
+      // Notify user
+      const msg = won
+        ? `Copy trade gagné : +${pnl.toFixed(2)} USDC sur "${(market.title || '').slice(0, 40)}"`
+        : `Copy trade perdu : ${pnl.toFixed(2)} USDC sur "${(market.title || '').slice(0, 40)}"`;
+
+      await Notification.create({
+        userId: trade.userId.toString(),
+        type: won ? 'bet_won' : 'bet_lost',
+        message: msg,
+        marketId: market._id.toString(),
+        amount: Math.abs(pnl),
+      }).catch(() => {});
+    }
+
+    logger.info(`resolver: CopyTrades resolved for market ${market._id} — ${trades.length} trade(s)`);
+  } catch (err) {
+    logger.error(`resolver: resolveCopyTrades error — ${err.message}`);
+  }
+}
+
 // ── Core ─────────────────────────────────────────────────────────────────────
 
 async function resolveMarket(market) {
@@ -223,6 +290,7 @@ async function resolveMarket(market) {
 
   await Market.findByIdAndUpdate(market._id, { status: 'resolved', outcome });
   await distributePayout(market, outcome);
+  await resolveCopyTrades(market, outcome);
   logger.info(`resolver: ✅ ${market._id} → ${outcome}`);
   return outcome;
 }

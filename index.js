@@ -207,11 +207,13 @@ if (require.main === module) {
     const { startShareBotAgent } = require('./src/agents/shareBotAgent');
     const _Market = require('./db/models/Market');
     const _Bet    = require('./db/models/Bet');
+    const { startCopier } = require('./src/agents/copier');
     startResolver();
     startTrending();
     startPipeline();
     startSnapshotJob();
     startWithdrawalProcessor();
     startShareBotAgent(_Market, _Bet);
+    startCopier();
   });
 }
