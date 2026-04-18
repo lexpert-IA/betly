@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLVES — Loup-Garou IA Live</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes bannerIn {
+      0%   { opacity: 0; transform: scale(0.7); }
+      30%  { opacity: 1; transform: scale(1.05); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes bannerOut {
+      from { opacity: 1; }
+      to   { opacity: 0; }
+    }
+    @keyframes redFlash {
+      0%   { background: rgba(220, 38, 38, 0.4); }
+      100% { background: transparent; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.5; }
+    }
+
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Top bar ── */
+    #top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 12px 16px;
+      background: linear-gradient(180deg, rgba(20,20,35,0.95) 0%, rgba(10,10,15,0.8) 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+    #phase-badge {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      color: #888;
+      transition: all 0.4s;
+    }
+    #phase-badge.day   { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); }
+    #phase-badge.vote  { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+    #phase-badge.night { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+
+    #round-label {
+      font-size: 13px;
+      color: #666;
+      letter-spacing: 1px;
+    }
+    #status-label {
+      font-size: 12px;
+      color: #555;
+    }
+
+    /* ── Chat area ── */
+    #chat-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    #chat-area::-webkit-scrollbar { width: 6px; }
+    #chat-area::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    .chat-msg {
+      animation: fadeIn 0.35s ease;
+      padding: 4px 0;
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .chat-speaker {
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    .chat-text {
+      color: #ccc;
+    }
+
+    .chat-system {
+      color: #555;
+      font-style: italic;
+      font-size: 13px;
+      text-align: center;
+      padding: 8px 0;
+    }
+    .chat-elimination {
+      color: #ef4444;
+      font-weight: 600;
+      text-align: center;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .chat-vote {
+      color: #f59e0b;
+      font-size: 13px;
+      text-align: center;
+      padding: 2px 0;
+    }
+
+    /* ── Character cards ── */
+    #cards-area {
+      display: flex;
+      gap: 10px;
+      padding: 12px 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      background: linear-gradient(0deg, rgba(20,20,35,0.95) 0%, rgba(10,10,15,0.6) 100%);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 10px 14px;
+      min-width: 110px;
+      max-width: 160px;
+      flex: 1;
+      text-align: center;
+      transition: all 0.4s;
+      position: relative;
+    }
+    .card.dead {
+      opacity: 0.45;
+      filter: grayscale(0.8);
+    }
+    .card.flash {
+      animation: redFlash 1.2s ease;
+    }
+    .card-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin: 0 auto 6px;
+    }
+    .card-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-name.dead-name {
+      text-decoration: line-through;
+      color: #666;
+    }
+    .card-trait {
+      font-size: 11px;
+      color: #777;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .card-status {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 10px;
+    }
+    .card-role {
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    /* ── Phase banner overlay ── */
+    #phase-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,15,0.85);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #phase-banner.show {
+      opacity: 1;
+      animation: bannerIn 0.5s ease forwards;
+    }
+    #phase-banner.hide {
+      animation: bannerOut 0.6s ease forwards;
+    }
+    #phase-banner-text {
+      font-size: clamp(36px, 8vw, 72px);
+      font-weight: 900;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+    }
+    #phase-banner-text.day   { color: #facc15; text-shadow: 0 0 40px rgba(250,204,21,0.4); }
+    #phase-banner-text.vote  { color: #ef4444; text-shadow: 0 0 40px rgba(239,68,68,0.4); }
+    #phase-banner-text.night { color: #818cf8; text-shadow: 0 0 40px rgba(99,102,241,0.4); }
+
+    /* ── Winner banner ── */
+    #winner-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      background: rgba(10,10,15,0.92);
+      z-index: 200;
+    }
+    #winner-banner.show { display: flex; }
+    #winner-title {
+      font-size: clamp(28px, 6vw, 56px);
+      font-weight: 900;
+      letter-spacing: 4px;
+    }
+    #winner-title.wolves    { color: #ef4444; }
+    #winner-title.villagers { color: #22c55e; }
+    #winner-subtitle {
+      font-size: 16px;
+      color: #888;
+    }
+    #winner-close {
+      margin-top: 12px;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #winner-close:hover { background: rgba(255,255,255,0.15); }
+
+    /* ── Start screen ── */
+    #start-screen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 24px;
+      background: #0a0a0f;
+      z-index: 300;
+    }
+    #start-screen.hidden { display: none; }
+    #start-title {
+      font-size: clamp(32px, 8vw, 64px);
+      font-weight: 900;
+      letter-spacing: 6px;
+      color: #e0e0e0;
+    }
+    #start-subtitle {
+      font-size: 14px;
+      color: #555;
+      letter-spacing: 2px;
+    }
+    #start-btn {
+      padding: 16px 48px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #start-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(99,102,241,0.4);
+    }
+    #start-btn:active { transform: translateY(0); }
+    #start-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    #start-error {
+      color: #ef4444;
+      font-size: 13px;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Start screen -->
+  <div id="start-screen">
+    <div id="start-title">WOLVES</div>
+    <div id="start-subtitle">Loup-Garou &middot; 12 IA &middot; En direct</div>
+    <button id="start-btn" onclick="startMatch()">LANCER UNE PARTIE</button>
+    <div id="start-error"></div>
+  </div>
+
+  <!-- Top bar -->
+  <div id="top-bar">
+    <div id="phase-badge">EN ATTENTE</div>
+    <div id="round-label"></div>
+    <div id="status-label"></div>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat-area"></div>
+
+  <!-- Character cards -->
+  <div id="cards-area"></div>
+
+  <!-- Phase banner overlay -->
+  <div id="phase-banner">
+    <div id="phase-banner-text"></div>
+  </div>
+
+  <!-- Winner banner -->
+  <div id="winner-banner">
+    <div id="winner-title"></div>
+    <div id="winner-subtitle"></div>
+    <button id="winner-close" onclick="closeWinner()">FERMER</button>
+  </div>
+
+  <script>
+    // ── State ──
+    let socket = null;
+    let matchId = null;
+    let players = [];
+    let speakerColors = {};
+    let speakerOrder = 0;
+
+    const COLORS = [
+      '#E8A87C', '#85DCB8', '#B8B5FF', '#F8B595', '#F67280',
+      '#C06C84', '#6C5B7B', '#355C7D', '#99B898', '#FECEAB',
+      '#FF847C', '#E84A5F'
+    ];
+    const AVATAR_BG = [
+      '#7c3aed', '#2563eb', '#0891b2', '#059669', '#d97706',
+      '#dc2626', '#9333ea', '#4f46e5', '#0d9488', '#ca8a04',
+      '#e11d48', '#7c2d12'
+    ];
+
+    const PHASE_LABELS = { day: 'JOUR', vote: 'VOTE', night: 'NUIT' };
+
+    // ── Start match ──
+    async function startMatch() {
+      const btn = document.getElementById('start-btn');
+      const err = document.getElementById('start-error');
+      btn.disabled = true;
+      btn.textContent = 'LANCEMENT...';
+      err.textContent = '';
+
+      try {
+        const res = await fetch('/api/matches/start', { method: 'POST' });
+        if (!res.ok) throw new Error('Erreur serveur: ' + res.status);
+        const data = await res.json();
+        matchId = data.matchId;
+        document.getElementById('start-screen').classList.add('hidden');
+        connectSocket();
+      } catch (e) {
+        err.textContent = e.message;
+        btn.disabled = false;
+        btn.textContent = 'LANCER UNE PARTIE';
+      }
+    }
+
+    // ── Socket connection ──
+    function connectSocket() {
+      socket = io();
+      socket.emit('join_match', { matchId });
+
+      socket.on('match_start', onMatchStart);
+      socket.on('phase_change', onPhaseChange);
+      socket.on('chat_message', onChatMessage);
+      socket.on('vote_cast', onVoteCast);
+      socket.on('vote_result', onVoteResult);
+      socket.on('elimination', onElimination);
+      socket.on('night_kill', onNightKill);
+      socket.on('match_end', onMatchEnd);
+    }
+
+    // ── Event handlers ──
+    function onMatchStart(data) {
+      players = data.players || [];
+      renderCards();
+      addSystemMsg('La partie commence avec ' + players.length + ' joueurs.');
+      document.getElementById('status-label').textContent = 'Partie #' + (data.matchId || matchId);
+    }
+
+    function onPhaseChange(data) {
+      const phase = data.phase;
+      const round = data.round || 1;
+
+      // Update top bar
+      const badge = document.getElementById('phase-badge');
+      badge.textContent = PHASE_LABELS[phase] || phase.toUpperCase();
+      badge.className = phase;
+      document.getElementById('round-label').textContent = 'Tour ' + round;
+
+      // Show banner
+      showPhaseBanner(phase);
+
+      addSystemMsg((PHASE_LABELS[phase] || phase) + ' — Tour ' + round);
+    }
+
+    function onChatMessage(data) {
+      const color = getSpeakerColor(data.speaker);
+      const el = document.createElement('div');
+      el.className = 'chat-msg';
+      el.innerHTML = '<span class="chat-speaker" style="color:' + color + '">' +
+        escHtml(data.speaker) + '</span><span class="chat-text">' + escHtml(data.text) + '</span>';
+      appendChat(el);
+    }
+
+    function onVoteCast(data) {
+      const el = document.createElement('div');
+      el.className = 'chat-vote';
+      el.textContent = escHtml(data.voter) + ' a vot\u00e9.';
+      appendChat(el);
+    }
+
+    function onVoteResult(data) {
+      if (data.eliminated) {
+        addSystemMsg('R\u00e9sultat du vote : ' + data.eliminated + ' est \u00e9limin\u00e9(e).');
+      } else {
+        addSystemMsg('Aucune \u00e9limination suite au vote.');
+      }
+      // Show tally
+      if (data.tally) {
+        const parts = Object.entries(data.tally).map(function(e) { return e[0] + ': ' + e[1]; });
+        addSystemMsg('Votes — ' + parts.join(', '));
+      }
+    }
+
+    function onElimination(data) {
+      const method = data.method === 'night_kill' ? 'tu\u00e9(e) par les loups' : '\u00e9limin\u00e9(e) par le village';
+      const el = document.createElement('div');
+      el.className = 'chat-elimination';
+      el.textContent = '\u2620 ' + data.name + ' a \u00e9t\u00e9 ' + method + ' (Tour ' + data.round + ')';
+      appendChat(el);
+
+      // Update card
+      markDead(data.name);
+    }
+
+    function onNightKill(data) {
+      const el = document.createElement('div');
+      el.className = 'chat-elimination';
+      el.textContent = '\ud83c\udf19 ' + data.victim + ' a \u00e9t\u00e9 d\u00e9vor\u00e9(e) durant la nuit. (Tour ' + data.round + ')';
+      appendChat(el);
+      markDead(data.victim);
+    }
+
+    function onMatchEnd(data) {
+      const side = data.winnerSide;
+      addSystemMsg('PARTIE TERMIN\u00c9E — Victoire des ' + (side === 'wolves' ? 'LOUPS' : 'VILLAGEOIS') + ' !');
+
+      // Reveal roles
+      if (data.roles) {
+        data.roles.forEach(function(r) {
+          const card = document.querySelector('.card[data-name="' + r.name + '"]');
+          if (card) {
+            const roleEl = card.querySelector('.card-role');
+            const icon = r.role === 'wolf' || r.role === 'loup' ? '\ud83d\udc3a' : '\ud83c\udfe0';
+            roleEl.textContent = icon + ' ' + r.role;
+            if (!r.alive) {
+              card.classList.add('dead');
+              card.querySelector('.card-name').classList.add('dead-name');
+              card.querySelector('.card-status').textContent = '\u274c';
+            }
+          }
+        });
+      }
+
+      // Winner banner
+      const banner = document.getElementById('winner-banner');
+      const title = document.getElementById('winner-title');
+      const sub = document.getElementById('winner-subtitle');
+      title.textContent = side === 'wolves' ? '\ud83d\udc3a LOUPS VICTORIEUX' : '\ud83c\udfe0 VILLAGE SAUV\u00c9';
+      title.className = side;
+      sub.textContent = 'La partie est termin\u00e9e.';
+      banner.classList.add('show');
+    }
+
+    function closeWinner() {
+      document.getElementById('winner-banner').classList.remove('show');
+    }
+
+    // ── UI helpers ──
+    function renderCards() {
+      const area = document.getElementById('cards-area');
+      area.innerHTML = '';
+      players.forEach(function(p, i) {
+        const card = document.createElement('div');
+        card.className = 'card' + (p.alive === false ? ' dead' : '');
+        card.dataset.name = p.name;
+        const bg = AVATAR_BG[i % AVATAR_BG.length];
+        const initial = (p.name || '?')[0].toUpperCase();
+        card.innerHTML =
+          '<div class="card-status">' + (p.alive === false ? '\u274c' : '\ud83d\udfe2') + '</div>' +
+          '<div class="card-avatar" style="background:' + bg + '">' + initial + '</div>' +
+          '<div class="card-name' + (p.alive === false ? ' dead-name' : '') + '">' + escHtml(p.name) + '</div>' +
+          '<div class="card-trait">' + escHtml(p.trait || p.archetype || '') + '</div>' +
+          '<div class="card-role"></div>';
+        area.appendChild(card);
+      });
+    }
+
+    function markDead(name) {
+      const card = document.querySelector('.card[data-name="' + name + '"]');
+      if (!card) return;
+      card.classList.add('flash');
+      setTimeout(function() {
+        card.classList.add('dead');
+        card.querySelector('.card-name').classList.add('dead-name');
+        card.querySelector('.card-status').textContent = '\u274c';
+      }, 600);
+    }
+
+    function getSpeakerColor(name) {
+      if (!speakerColors[name]) {
+        speakerColors[name] = COLORS[speakerOrder % COLORS.length];
+        speakerOrder++;
+      }
+      return speakerColors[name];
+    }
+
+    function addSystemMsg(text) {
+      var el = document.createElement('div');
+      el.className = 'chat-system';
+      el.textContent = text;
+      appendChat(el);
+    }
+
+    function appendChat(el) {
+      var area = document.getElementById('chat-area');
+      area.appendChild(el);
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function showPhaseBanner(phase) {
+      var banner = document.getElementById('phase-banner');
+      var text = document.getElementById('phase-banner-text');
+      text.textContent = PHASE_LABELS[phase] || phase.toUpperCase();
+      text.className = phase;
+      banner.className = 'show';
+      setTimeout(function() { banner.className = 'hide'; }, 2200);
+      setTimeout(function() { banner.className = ''; }, 2800);
+    }
+
+    function escHtml(s) {
+      var d = document.createElement('div');
+      d.textContent = s || '';
+      return d.innerHTML;
+    }
+  </script>
+</body>
+</html>
