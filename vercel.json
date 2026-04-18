@@ -1,9 +1,5 @@
 {
   "version": 2,
-  "crons": [
-    { "path": "/api/cron/sync-polymarket", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/resolve-markets", "schedule": "0 12 * * *" }
-  ],
   "builds": [
     {
       "src": "index.js",
