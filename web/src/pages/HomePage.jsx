@@ -6,9 +6,7 @@ const GAMES = [
   { id: 1, name: 'Pleine Lune', players: 8, live: 12, img: null, color: '#7c3aed' },
   { id: 2, name: 'Village Maudit', players: 8, live: 8, img: null, color: '#2563eb' },
   { id: 3, name: 'Nuit Noire', players: 8, live: 23, img: null, color: '#dc2626' },
-  { id: 4, name: 'Le Conseil', players: 8, live: 5, img: null, color: '#059669' },
-  { id: 5, name: 'Meute Alpha', players: 8, live: 31, img: null, color: '#d97706' },
-  { id: 6, name: 'Clair de Lune', players: 8, live: 17, img: null, color: '#7c3aed' },
+  { id: 4, name: 'Meute Alpha', players: 8, live: 31, img: null, color: '#059669' },
 ];
 
 const RECENT_BETS = [
@@ -204,12 +202,14 @@ export default function HomePage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <a href="/live" style={{
               padding: '12px 28px', fontSize: 14, fontWeight: 600,
-              background: '#1a7f37', border: 'none', borderRadius: 8,
+              background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+              border: 'none', borderRadius: 8,
               color: '#fff', textDecoration: 'none', display: 'inline-flex',
               alignItems: 'center', gap: 8, transition: 'all 0.2s',
+              boxShadow: '0 2px 8px rgba(124,58,237,0.3)',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#16a34a'; e.currentTarget.style.boxShadow = '0 0 20px rgba(22,163,74,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#1a7f37'; e.currentTarget.style.boxShadow = 'none'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6, #7c3aed)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(124,58,237,0.4)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed, #6d28d9)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(124,58,237,0.3)'; }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="5 3 19 12 5 21 5 3"/>
@@ -238,10 +238,10 @@ export default function HomePage() {
           <div style={{ display: 'flex', gap: 12 }}>
             <a href="/live" style={{
               width: 200, height: 140, borderRadius: 12,
-              background: 'linear-gradient(135deg, #1a7f37, #16a34a)',
+              background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
               display: 'flex', flexDirection: 'column',
               justifyContent: 'flex-end', padding: 16, textDecoration: 'none',
-              border: '2px solid rgba(26,127,55,0.5)',
+              border: '2px solid rgba(124,58,237,0.4)',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -310,7 +310,7 @@ export default function HomePage() {
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
+          gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
           gap: 12,
         }}>
           {GAMES.map(game => <GameCard key={game.id} game={game} />)}

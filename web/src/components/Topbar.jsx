@@ -232,8 +232,11 @@ export default function Topbar({ walletDisabled = false }) {
               }}>Connexion</button>
               <button onClick={openAuth} style={{
                 padding: '8px 20px', fontSize: 14, fontWeight: 600,
-                background: '#1a7f37', border: 'none',
+                background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                border: 'none',
                 borderRadius: 8, color: '#fff', cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(124,58,237,0.3)',
               }}>Inscription</button>
             </>
           )}
