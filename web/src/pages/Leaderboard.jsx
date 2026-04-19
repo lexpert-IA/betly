@@ -21,9 +21,9 @@ function TabBtn({ active, onClick, children }) {
       style={{
         padding: '8px 18px',
         borderRadius: '7px',
-        border: active ? '1px solid #a78bfa' : '1px solid rgba(255,255,255,0.07)',
-        background: active ? 'rgba(167,139,250,0.15)' : 'transparent',
-        color: active ? 'var(--accent)' : 'var(--text-secondary)',
+        border: active ? '1px solid rgba(26,127,55,0.4)' : '1px solid rgba(255,255,255,0.07)',
+        background: active ? 'rgba(26,127,55,0.15)' : 'transparent',
+        color: active ? '#22c55e' : 'var(--text-secondary)',
         fontSize: '13px',
         fontWeight: 600,
         cursor: 'pointer',
@@ -88,8 +88,8 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
         {/* Preview card */}
         <div style={{
           margin: '18px 18px 14px',
-          background: 'linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(96,165,250,0.1) 100%)',
-          border: '1px solid rgba(167,139,250,0.3)',
+          background: 'linear-gradient(135deg, rgba(26,127,55,0.2) 0%, rgba(22,163,74,0.1) 100%)',
+          border: '1px solid rgba(26,127,55,0.3)',
           borderRadius: 12, padding: '20px 18px',
           textAlign: 'center',
         }}>
@@ -229,8 +229,8 @@ export default function Leaderboard() {
                 <div style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '10px 16px',
-                  background: 'rgba(167,139,250,0.07)',
-                  borderBottom: '1px solid rgba(167,139,250,0.15)',
+                  background: 'rgba(26,127,55,0.07)',
+                  borderBottom: '1px solid rgba(26,127,55,0.15)',
                 }}>
                   <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>
                     Tu es #{myRankIdx + 1} cette semaine !
@@ -240,8 +240,8 @@ export default function Leaderboard() {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 5,
                       padding: '5px 12px', borderRadius: 7,
-                      border: '1px solid rgba(167,139,250,0.35)',
-                      background: 'rgba(167,139,250,0.12)',
+                      border: '1px solid rgba(26,127,55,0.35)',
+                      background: 'rgba(26,127,55,0.12)',
                       color: 'var(--accent)', fontSize: 11, fontWeight: 700,
                       cursor: 'pointer',
                     }}
@@ -522,7 +522,7 @@ export default function Leaderboard() {
                               <span style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 2,
                                 padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                                background: 'rgba(124,58,237,0.12)', color: 'var(--accent)',
+                                background: 'rgba(26,127,55,0.12)', color: 'var(--accent)',
                               }}>
                                 <Bot size={8} strokeWidth={3} /> IA
                               </span>
@@ -570,7 +570,7 @@ export default function Leaderboard() {
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', gap: 2,
                               padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                              background: 'rgba(124,58,237,0.12)', color: 'var(--accent)',
+                              background: 'rgba(26,127,55,0.12)', color: 'var(--accent)',
                             }}>
                               <Bot size={8} strokeWidth={3} /> IA
                             </span>
@@ -604,7 +604,7 @@ export default function Leaderboard() {
                 <a href="/agents" style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '8px 20px', borderRadius: 10, textDecoration: 'none',
-                  background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+                  background: 'rgba(26,127,55,0.08)', border: '1px solid rgba(26,127,55,0.2)',
                   color: 'var(--accent)', fontSize: 12, fontWeight: 700,
                 }}>
                   <Bot size={14} strokeWidth={2} /> Voir tous les agents

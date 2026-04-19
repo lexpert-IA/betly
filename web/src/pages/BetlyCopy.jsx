@@ -207,9 +207,9 @@ function CopyModal({ wallet, config, balance, onClose, onSaved }) {
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
         zIndex: 801, width: 380, maxWidth: 'calc(100vw - 32px)',
-        background: C.card, border: `1px solid rgba(124,58,237,0.35)`,
+        background: C.card, border: `1px solid rgba(26,127,55,0.35)`,
         borderRadius: 18, padding: 28,
-        boxShadow: '0 32px 80px rgba(0,0,0,.8), 0 0 40px rgba(124,58,237,0.1)',
+        boxShadow: '0 32px 80px rgba(0,0,0,.8), 0 0 40px rgba(26,127,55,0.1)',
         animation: 'modal-in .2s ease',
       }}>
         {/* Header */}
@@ -245,7 +245,7 @@ function CopyModal({ wallet, config, balance, onClose, onSaved }) {
         </div>
 
         {/* Info */}
-        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(124,58,237,0.07)', marginBottom: 20, fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+        <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(26,127,55,0.07)', marginBottom: 20, fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
           Chaque fois que ce trader ouvre une position, Wolves en copie une portion selon ton allocation.
           Une commission de <b style={{ color: C.purpleL }}>0.5%</b> est prélevée.
         </div>
@@ -258,9 +258,9 @@ function CopyModal({ wallet, config, balance, onClose, onSaved }) {
           }}>Annuler</button>
           <button onClick={save} disabled={loading} style={{
             flex: 2, padding: '11px', borderRadius: 10, border: 'none',
-            background: loading ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+            background: loading ? 'rgba(26,127,55,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
             color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 800,
-            boxShadow: loading ? 'none' : '0 0 20px rgba(124,58,237,0.4)',
+            boxShadow: loading ? 'none' : '0 0 20px rgba(26,127,55,0.4)',
             transition: 'all .2s',
           }}>
             {loading ? 'Enregistrement…' : (existing ? 'Mettre à jour' : '🚀 Commencer à copier')}
@@ -300,8 +300,8 @@ function SetupBanner({ user, config, onActivate }) {
     return (
       <div style={{
         ...card, padding: '20px 24px', textAlign: 'center', marginBottom: 20,
-        border: `1px solid rgba(124,58,237,0.25)`,
-        background: 'linear-gradient(135deg, rgba(124,58,237,0.06), rgba(168,85,247,0.03))',
+        border: `1px solid rgba(26,127,55,0.25)`,
+        background: 'linear-gradient(135deg, rgba(26,127,55,0.06), rgba(26,127,55,0.03))',
       }}>
         <div style={{ fontSize: 26, marginBottom: 10 }}>👛</div>
         <div style={{ fontSize: 15, fontWeight: 800, color: C.text, marginBottom: 6 }}>
@@ -314,7 +314,7 @@ function SetupBanner({ user, config, onActivate }) {
           display: 'inline-block', padding: '11px 28px', borderRadius: 10,
           background: `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
           color: '#fff', fontSize: 13, fontWeight: 800, textDecoration: 'none',
-          boxShadow: '0 0 20px rgba(124,58,237,0.4)',
+          boxShadow: '0 0 20px rgba(26,127,55,0.4)',
         }}>
           Configurer mon wallet →
         </a>
@@ -349,7 +349,7 @@ function SetupBanner({ user, config, onActivate }) {
               transition: 'all .2s', whiteSpace: 'nowrap',
             }}
           >
-            {loading ? 'Activation…' : '⚡ Activer le Copy Trading'}
+            {loading ? 'Activation…' : 'Activer le Copy Trading'}
           </button>
         </div>
       </div>
@@ -446,7 +446,7 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
         </span>
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
           <Badge color={config?.mode === 'auto' ? 'var(--green)' : 'var(--yellow)'}>
-            {config?.mode === 'auto' ? '⚡ Auto' : '👆 Manuel'}
+            {config?.mode === 'auto' ? 'Auto' : 'Manuel'}
           </Badge>
           {config?.paperMode && <Badge color="#60a5fa">📝 Paper mode</Badge>}
           <Badge color={C.purpleL}>Max {config?.maxPerTrade || 10} USDC/trade</Badge>
@@ -477,7 +477,7 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
             borderBottom: i < recent.length - 1 ? `1px solid ${C.border}` : 'none',
           }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
-              background: t.status === 'paper' ? 'rgba(96,165,250,0.12)' : 'rgba(124,58,237,0.12)',
+              background: t.status === 'paper' ? 'rgba(96,165,250,0.12)' : 'rgba(26,127,55,0.12)',
             }}>
               {t.status === 'paper' ? '📝' : '✅'}
             </div>
@@ -508,8 +508,8 @@ function TabTraders({ config, balance, onConfigUpdate }) {
   const followed = new Set((config?.followedWallets || []).map(w => w.address));
 
   const SORTS = [
-    { key: 'score',   label: '🏆 Score'    },
-    { key: 'winrate', label: '🎯 Win Rate'  },
+    { key: 'score',   label: 'Score'    },
+    { key: 'winrate', label: 'Win Rate'  },
     { key: 'roi',     label: '💰 ROI'       },
   ];
 
@@ -522,7 +522,7 @@ function TabTraders({ config, balance, onConfigUpdate }) {
             padding: '7px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: sort === s.key ? 700 : 500,
             background: sort === s.key ? `linear-gradient(135deg, ${C.purple}, ${C.purpleL})` : 'rgba(255,255,255,0.05)',
             color: sort === s.key ? '#fff' : C.muted,
-            boxShadow: sort === s.key ? '0 0 16px rgba(124,58,237,0.3)' : 'none',
+            boxShadow: sort === s.key ? '0 0 16px rgba(26,127,55,0.3)' : 'none',
             transition: 'all .15s',
           }}>{s.label}</button>
         ))}
@@ -596,9 +596,9 @@ function TabTraders({ config, balance, onConfigUpdate }) {
                 style={{
                   padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                   fontSize: 12, fontWeight: 700, transition: 'all .15s', whiteSpace: 'nowrap',
-                  background: isCopying ? `rgba(124,58,237,0.18)` : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+                  background: isCopying ? `rgba(26,127,55,0.18)` : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
                   color: isCopying ? C.purpleL : '#fff',
-                  boxShadow: isCopying ? 'none' : '0 0 12px rgba(124,58,237,0.3)',
+                  boxShadow: isCopying ? 'none' : '0 0 12px rgba(26,127,55,0.3)',
                 }}
               >
                 {isCopying ? 'Gérer' : 'Copier'}
@@ -658,7 +658,7 @@ function TabMyCopies({ config, balance, onConfigUpdate }) {
           display: 'inline-block', padding: '10px 24px', borderRadius: 10,
           background: `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
           color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
-          boxShadow: '0 0 16px rgba(124,58,237,0.35)',
+          boxShadow: '0 0 16px rgba(26,127,55,0.35)',
         }}>🔍 Trouver des traders</a>
       </div>
     );
@@ -669,7 +669,7 @@ function TabMyCopies({ config, balance, onConfigUpdate }) {
       {followed.map(w => (
         <div key={w.address} style={{
           ...card, padding: '16px 20px',
-          border: `1px solid ${w.active ? 'rgba(124,58,237,0.2)' : C.border}`,
+          border: `1px solid ${w.active ? 'rgba(26,127,55,0.2)' : C.border}`,
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
         }}>
           <Dot active={w.active} size={9} />
@@ -698,7 +698,7 @@ function TabMyCopies({ config, balance, onConfigUpdate }) {
               onClick={() => setModal({ walletAddress: w.address, winRate: 0, roi: 0, totalTrades: 0, betlyScore: 0 })}
               style={{
                 padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                background: 'rgba(124,58,237,0.1)', border: `1px solid rgba(124,58,237,0.3)`,
+                background: 'rgba(26,127,55,0.1)', border: `1px solid rgba(26,127,55,0.3)`,
                 color: C.purpleL,
               }}
             >Gérer</button>
@@ -762,9 +762,9 @@ function TabTrades() {
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)} style={{
             padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
-            background: filter === f.key ? `rgba(124,58,237,0.2)` : 'rgba(255,255,255,0.05)',
+            background: filter === f.key ? `rgba(26,127,55,0.2)` : 'rgba(255,255,255,0.05)',
             color: filter === f.key ? C.purpleL : C.muted, fontWeight: filter === f.key ? 700 : 400,
-            border: filter === f.key ? `1px solid rgba(124,58,237,0.4)` : '1px solid transparent',
+            border: filter === f.key ? `1px solid rgba(26,127,55,0.4)` : '1px solid transparent',
           }}>{f.label}</button>
         ))}
         {stats.totalPnl !== undefined && (
@@ -894,7 +894,7 @@ function TabAlerts({ config, trades }) {
             style={{
               padding: '3px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer',
               border: `1px solid ${filterMine ? C.purpleL : C.border}`,
-              background: filterMine ? 'rgba(124,58,237,0.15)' : 'transparent',
+              background: filterMine ? 'rgba(26,127,55,0.15)' : 'transparent',
               color: filterMine ? C.purpleL : C.muted, transition: 'all .15s',
             }}
           >
@@ -920,11 +920,11 @@ function TabAlerts({ config, trades }) {
           <div key={a._id || a.id || i} style={{
             display: 'flex', gap: 12, padding: '12px 18px', alignItems: 'flex-start',
             borderBottom: i < displayed.length - 1 ? `1px solid ${C.border}` : 'none',
-            background: isFollowed ? 'rgba(124,58,237,0.03)' : 'transparent',
+            background: isFollowed ? 'rgba(26,127,55,0.03)' : 'transparent',
           }}>
             <div style={{
               width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-              background: isFollowed ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.06)',
+              background: isFollowed ? 'rgba(26,127,55,0.15)' : 'rgba(255,255,255,0.06)',
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
             }}>
               {isFollowed ? '🔗' : '🐋'}
@@ -951,8 +951,8 @@ function TabAlerts({ config, trades }) {
                     className="btn-press"
                     style={{
                       padding: '2px 8px', borderRadius: 5, fontSize: 10, fontWeight: 700, cursor: 'pointer',
-                      background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)',
-                      color: '#a855f7', transition: 'all .15s',
+                      background: 'rgba(26,127,55,0.12)', border: '1px solid rgba(26,127,55,0.25)',
+                      color: '#22c55e', transition: 'all .15s',
                     }}
                   >
                     Copier
@@ -971,9 +971,9 @@ function TabAlerts({ config, trades }) {
           <div style={{
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
             zIndex: 801, width: 340, maxWidth: 'calc(100vw - 32px)',
-            background: C.card, border: `1px solid rgba(124,58,237,0.35)`,
+            background: C.card, border: `1px solid rgba(26,127,55,0.35)`,
             borderRadius: 18, padding: 24,
-            boxShadow: '0 32px 80px rgba(0,0,0,.8), 0 0 40px rgba(124,58,237,0.1)',
+            boxShadow: '0 32px 80px rgba(0,0,0,.8), 0 0 40px rgba(26,127,55,0.1)',
             animation: 'modal-in .2s ease',
           }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: C.text, marginBottom: 6 }}>Copier ce trade</div>
@@ -1003,8 +1003,8 @@ function TabAlerts({ config, trades }) {
                   <button key={a} onClick={() => setCopyAmt(String(a))} style={{
                     flex: 1, padding: '3px 0', borderRadius: 5, fontSize: 10, cursor: 'pointer',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    background: String(copyAmt) === String(a) ? 'rgba(168,85,247,0.2)' : 'transparent',
-                    color: String(copyAmt) === String(a) ? '#a855f7' : '#64748b',
+                    background: String(copyAmt) === String(a) ? 'rgba(26,127,55,0.2)' : 'transparent',
+                    color: String(copyAmt) === String(a) ? '#22c55e' : '#64748b',
                   }}>
                     ${a}
                   </button>
@@ -1020,9 +1020,9 @@ function TabAlerts({ config, trades }) {
               }}>Annuler</button>
               <button onClick={handleCopy} disabled={copyLoading} className="btn-press" style={{
                 flex: 2, padding: '10px', borderRadius: 10, border: 'none',
-                background: copyLoading ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+                background: copyLoading ? 'rgba(26,127,55,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
                 color: '#fff', cursor: copyLoading ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 800,
-                boxShadow: copyLoading ? 'none' : '0 0 20px rgba(124,58,237,0.4)',
+                boxShadow: copyLoading ? 'none' : '0 0 20px rgba(26,127,55,0.4)',
                 transition: 'all .2s',
               }}>
                 {copyLoading ? 'Envoi…' : `Confirmer $${copyAmt}`}
@@ -1088,11 +1088,11 @@ function TabSettings({ config, onConfigUpdate }) {
 
       <Section title="Mode d'exécution">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {[['auto','⚡ Automatique','Copie instantanée sans validation'], ['manual','👆 Manuel','Tu valides chaque trade']].map(([key, label, desc]) => (
+          {[['auto','Automatique','Copie instantanée sans validation'], ['manual','Manuel','Tu valides chaque trade']].map(([key, label, desc]) => (
             <button key={key} onClick={() => setForm(f => ({ ...f, mode: key }))} style={{
               padding: '14px', borderRadius: 10, cursor: 'pointer',
-              background: form.mode === key ? `linear-gradient(135deg, rgba(124,58,237,0.2), rgba(168,85,247,0.1))` : 'rgba(255,255,255,0.03)',
-              border: `1px solid ${form.mode === key ? 'rgba(124,58,237,0.5)' : C.border}`,
+              background: form.mode === key ? `linear-gradient(135deg, rgba(26,127,55,0.2), rgba(26,127,55,0.1))` : 'rgba(255,255,255,0.03)',
+              border: `1px solid ${form.mode === key ? 'rgba(26,127,55,0.5)' : C.border}`,
               textAlign: 'left', transition: 'all .15s',
             }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: form.mode === key ? C.purpleL : C.dim, marginBottom: 4 }}>{label}</div>
@@ -1135,9 +1135,9 @@ function TabSettings({ config, onConfigUpdate }) {
 
       <button onClick={save} disabled={saving} style={{
         width: '100%', padding: '13px', borderRadius: 12, border: 'none',
-        background: saved ? 'linear-gradient(135deg, #16a34a, #22c55e)' : saving ? 'rgba(124,58,237,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+        background: saved ? 'linear-gradient(135deg, #16a34a, #22c55e)' : saving ? 'rgba(26,127,55,0.4)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
         color: '#fff', fontSize: 14, fontWeight: 800, cursor: saving ? 'not-allowed' : 'pointer',
-        boxShadow: saving || saved ? 'none' : '0 0 24px rgba(124,58,237,0.4)',
+        boxShadow: saving || saved ? 'none' : '0 0 24px rgba(26,127,55,0.4)',
         transition: 'all .25s',
       }}>
         {saving ? 'Enregistrement…' : saved ? '✓ Sauvegardé' : 'Sauvegarder les paramètres'}
@@ -1189,8 +1189,8 @@ function TelegramLink() {
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>Envoie cette commande au bot :</div>
           <div style={{
-            padding: '10px 18px', borderRadius: 8, background: 'rgba(124,58,237,0.1)',
-            border: '1px solid rgba(124,58,237,0.3)', display: 'inline-block',
+            padding: '10px 18px', borderRadius: 8, background: 'rgba(26,127,55,0.1)',
+            border: '1px solid rgba(26,127,55,0.3)', display: 'inline-block',
             fontFamily: 'monospace', fontSize: 15, fontWeight: 800, color: C.purpleL, letterSpacing: '.05em',
           }}>
             /link {code}
@@ -1200,7 +1200,7 @@ function TelegramLink() {
       ) : (
         <button onClick={generateCode} disabled={loading} className="btn-press" style={{
           width: '100%', padding: '10px', borderRadius: 10, border: 'none',
-          background: loading ? 'rgba(124,58,237,0.3)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
+          background: loading ? 'rgba(26,127,55,0.3)' : `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`,
           color: '#fff', fontSize: 12, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer',
           transition: 'all .2s',
         }}>
@@ -1230,7 +1230,7 @@ export default function BetlyCopy() {
 
   const TABS = [
     { key: 'dashboard', label: '📊 Dashboard' },
-    { key: 'traders',   label: '🏆 Traders'   },
+    { key: 'traders',   label: 'Traders'   },
     { key: 'mine',      label: '🔗 Mes copies', count: (config?.followedWallets || []).length },
     { key: 'trades',    label: '📋 Trades'     },
     { key: 'alerts',    label: '🔔 Alertes'    },
@@ -1285,7 +1285,7 @@ export default function BetlyCopy() {
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '9px 16px', borderRadius: '8px 8px 0 0', border: 'none', cursor: 'pointer',
-            background: tab === t.key ? 'rgba(124,58,237,0.12)' : 'transparent',
+            background: tab === t.key ? 'rgba(26,127,55,0.12)' : 'transparent',
             color: tab === t.key ? C.purpleL : C.muted,
             fontSize: isMobile ? 11 : 13, fontWeight: tab === t.key ? 700 : 400,
             borderBottom: tab === t.key ? `2px solid ${C.purpleL}` : '2px solid transparent',
@@ -1296,8 +1296,8 @@ export default function BetlyCopy() {
             {t.label}
             {t.count > 0 && (
               <span style={{
-                background: tab === t.key ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.08)',
-                color: tab === t.key ? '#c4b5fd' : 'var(--text-muted)',
+                background: tab === t.key ? 'rgba(26,127,55,0.3)' : 'rgba(255,255,255,0.08)',
+                color: tab === t.key ? '#86efac' : 'var(--text-muted)',
                 borderRadius: 999, padding: '1px 6px', fontSize: 10, fontWeight: 700,
               }}>{t.count}</span>
             )}

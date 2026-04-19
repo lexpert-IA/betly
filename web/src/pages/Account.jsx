@@ -233,9 +233,9 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
               </p>
               <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
                 {[
-                  { icon: '⚡', text: 'Création instantanée' },
-                  { icon: '🔐', text: 'Clé privée chiffrée' },
-                  { icon: '🌐', text: 'Réseau Polygon' },
+                  { icon: '', text: 'Creation instantanee' },
+                  { icon: '', text: 'Cle privee chiffree' },
+                  { icon: '', text: 'Reseau Polygon' },
                 ].map(({ icon, text }) => (
                   <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                     <span>{icon}</span>{text}

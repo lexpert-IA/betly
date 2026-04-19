@@ -92,9 +92,18 @@ function FeatureCard({ feature }) {
         <div style={{ fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 4 }}>{feature.title}</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>{feature.desc}</div>
         <a href={feature.tag === 'Exclusif' ? '/copy' : '/live'} style={{
-          fontSize: 13, fontWeight: 600, color: '#fff',
-          marginTop: 8, display: 'inline-block', textDecoration: 'none',
-        }}>En savoir plus</a>
+          fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)',
+          marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 4,
+          textDecoration: 'none', transition: 'color 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+        >
+          En savoir plus
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+          </svg>
+        </a>
       </div>
     </div>
   );
@@ -115,7 +124,7 @@ function BetsTable() {
             color: i === 0 ? '#fff' : 'var(--text-muted)',
             background: i === 0 ? 'rgba(255,255,255,0.06)' : 'transparent',
             border: 'none', cursor: 'pointer',
-            borderBottom: i === 0 ? '2px solid var(--accent)' : '2px solid transparent',
+            borderBottom: i === 0 ? '2px solid #1a7f37' : '2px solid transparent',
           }}>{tab}</button>
         ))}
       </div>
@@ -192,17 +201,35 @@ export default function HomePage() {
           }}>
             8 agents IA s'affrontent en temps reel. Debats, votes, eliminations. Analysez le jeu et pariez sur l'issue.
           </p>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <a href="/live" style={{
               padding: '12px 28px', fontSize: 14, fontWeight: 600,
               background: '#1a7f37', border: 'none', borderRadius: 8,
-              color: '#fff', textDecoration: 'none', display: 'inline-block',
-            }}>Jouer maintenant</a>
+              color: '#fff', textDecoration: 'none', display: 'inline-flex',
+              alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#16a34a'; e.currentTarget.style.boxShadow = '0 0 20px rgba(22,163,74,0.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#1a7f37'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Jouer maintenant
+            </a>
             <a href="/copy" style={{
               padding: '12px 28px', fontSize: 14, fontWeight: 500,
               background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)',
-              borderRadius: 8, color: '#fff', textDecoration: 'none', display: 'inline-block',
-            }}>Copy Trading</a>
+              borderRadius: 8, color: '#fff', textDecoration: 'none', display: 'inline-flex',
+              alignItems: 'center', gap: 8, transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'var(--border-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/>
+              </svg>
+              Copy Trading
+            </a>
           </div>
         </div>
 
@@ -211,10 +238,10 @@ export default function HomePage() {
           <div style={{ display: 'flex', gap: 12 }}>
             <a href="/live" style={{
               width: 200, height: 140, borderRadius: 12,
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              background: 'linear-gradient(135deg, #1a7f37, #16a34a)',
               display: 'flex', flexDirection: 'column',
               justifyContent: 'flex-end', padding: 16, textDecoration: 'none',
-              border: '2px solid #7c3aed',
+              border: '2px solid rgba(26,127,55,0.5)',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
@@ -228,10 +255,10 @@ export default function HomePage() {
             </a>
             <a href="/copy" style={{
               width: 200, height: 140, borderRadius: 12,
-              background: 'linear-gradient(135deg, #059669, #047857)',
+              background: 'linear-gradient(135deg, #1e3a5f, #2563eb)',
               display: 'flex', flexDirection: 'column',
               justifyContent: 'flex-end', padding: 16, textDecoration: 'none',
-              border: '2px solid #059669',
+              border: '2px solid rgba(37,99,235,0.4)',
               transition: 'transform 0.2s',
             }}
             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}

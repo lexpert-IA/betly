@@ -115,12 +115,12 @@ body {
   font-family: var(--font-body);
 }
 .wolves-btn-primary {
-  background: var(--accent);
+  background: #1a7f37;
   color: #fff;
 }
 .wolves-btn-primary:hover {
-  background: var(--accent-hover);
-  box-shadow: 0 0 20px var(--accent-glow);
+  background: #16a34a;
+  box-shadow: 0 0 20px rgba(22,163,74,0.3);
   transform: translateY(-1px);
 }
 .wolves-btn-ghost {

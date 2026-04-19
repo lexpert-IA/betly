@@ -158,7 +158,7 @@ export default function Topbar({ walletDisabled = false }) {
 
         {/* Wallet + Auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {!walletDisabled && <WalletButton />}
+          {!walletDisabled && user && <WalletButton />}
           {user ? (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
@@ -178,7 +178,7 @@ export default function Topbar({ walletDisabled = false }) {
                 ) : (
                   <span style={{
                     width: 24, height: 24, borderRadius: '50%',
-                    background: 'var(--accent)',
+                    background: '#1a7f37',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: 11, fontWeight: 700, color: '#fff',
                   }}>{(user.username || user.pseudo || '?')[0].toUpperCase()}</span>

@@ -5,14 +5,12 @@ import { useUsdcBalance } from '../hooks/useUsdcBalance';
 
 export default function WalletButton() {
   const { primaryWallet, setShowAuthFlow } = useDynamicContext();
-  const { user, openAuth } = useAuth();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Custodial wallet (DB) ou wallet connecté (MetaMask/Dynamic)
   const address = primaryWallet?.address || user?.walletAddress;
   const isCustodial = !primaryWallet?.address && !!user?.walletAddress;
-
   const { balance } = useUsdcBalance(address);
 
   useEffect(() => {
@@ -24,94 +22,48 @@ export default function WalletButton() {
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
-  // ── Pas de wallet → "Bet now" CTA ─────────────────────────────────────────
+  // No wallet connected — show connect button
   if (!address) {
     return (
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {/* Bet now — CTA principal */}
-        <button
-          onClick={() => {
-            if (user) {
-              window.location.href = '/account?tab=deposit';
-            } else {
-              openAuth();
-            }
-          }}
-          style={{
-            padding: '7px 18px',
-            borderRadius: 10,
-            border: 'none',
-            cursor: 'pointer',
-            background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
-            color: '#fff',
-            fontSize: 13,
-            fontWeight: 800,
-            letterSpacing: '0.3px',
-            boxShadow: '0 0 20px rgba(124,58,237,0.45), 0 2px 8px rgba(0,0,0,0.3)',
-            transition: 'all .2s',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexShrink: 0,
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 0 32px rgba(168,85,247,0.6), 0 4px 12px rgba(0,0,0,0.4)';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 0 20px rgba(124,58,237,0.45), 0 2px 8px rgba(0,0,0,0.3)';
-          }}
-        >
-          <span style={{ fontSize: 14 }}>🎯</span>
-          Bet now
-        </button>
-
-        {/* Connecter wallet — option secondaire */}
-        <button
-          onClick={() => setShowAuthFlow(true)}
-          style={{
-            padding: '6px 12px',
-            borderRadius: 9,
-            cursor: 'pointer',
-            background: 'rgba(124,58,237,0.08)',
-            border: '1px solid rgba(124,58,237,0.25)',
-            color: '#a78bfa',
-            fontSize: 11,
-            fontWeight: 600,
-            transition: 'all .15s',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(124,58,237,0.16)';
-            e.currentTarget.style.borderColor = 'rgba(124,58,237,0.5)';
-            e.currentTarget.style.color = '#c4b5fd';
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(124,58,237,0.08)';
-            e.currentTarget.style.borderColor = 'rgba(124,58,237,0.25)';
-            e.currentTarget.style.color = '#a78bfa';
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M20 12V22H4V12" /><path d="M22 7H2v5h20V7z" /><path d="M12 22V7" />
-            <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
-            <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
-          </svg>
-          Wallet
-        </button>
-      </div>
+      <button
+        onClick={() => setShowAuthFlow(true)}
+        style={{
+          padding: '7px 14px',
+          borderRadius: 8,
+          cursor: 'pointer',
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-secondary)',
+          fontSize: 13,
+          fontWeight: 500,
+          transition: 'all .15s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          flexShrink: 0,
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+          e.currentTarget.style.borderColor = 'var(--border-hover)';
+          e.currentTarget.style.color = '#fff';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+          e.currentTarget.style.borderColor = 'var(--border)';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/>
+        </svg>
+        Wallet
+      </button>
     );
   }
 
-  const shortAddr = `${address.slice(0, 6)}…${address.slice(-4)}`;
+  const shortAddr = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
-  // ── Wallet connecté ────────────────────────────────────────────────────────
+  // Wallet connected
   return (
     <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
       <button
@@ -119,31 +71,33 @@ export default function WalletButton() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 7,
+          gap: 8,
           padding: '6px 12px',
-          borderRadius: 10,
+          borderRadius: 8,
           cursor: 'pointer',
-          background: open
-            ? 'rgba(124,58,237,0.18)'
-            : 'rgba(124,58,237,0.08)',
-          border: `1px solid ${open ? 'rgba(124,58,237,0.55)' : 'rgba(124,58,237,0.2)'}`,
+          background: open ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+          border: `1px solid ${open ? 'var(--border-hover)' : 'var(--border)'}`,
           transition: 'all .15s',
-          boxShadow: open ? '0 0 16px rgba(124,58,237,0.2)' : 'none',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+          e.currentTarget.style.borderColor = 'var(--border-hover)';
+        }}
+        onMouseLeave={e => {
+          if (!open) {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            e.currentTarget.style.borderColor = 'var(--border)';
+          }
         }}
       >
-        {/* Dot indicateur */}
         <span style={{
-          width: 8, height: 8, borderRadius: '50%',
-          background: isCustodial
-            ? 'linear-gradient(135deg, #7c3aed, #a855f7)'
-            : '#22c55e',
-          boxShadow: isCustodial
-            ? '0 0 6px rgba(168,85,247,0.8)'
-            : '0 0 6px rgba(34,197,94,0.8)',
+          width: 7, height: 7, borderRadius: '50%',
+          background: isCustodial ? '#1a7f37' : '#22c55e',
+          boxShadow: `0 0 6px ${isCustodial ? 'rgba(26,127,55,0.7)' : 'rgba(34,197,94,0.7)'}`,
           flexShrink: 0,
         }} />
 
-        <span style={{ fontSize: 12, fontWeight: 700, color: '#c4b5fd', letterSpacing: '0.2px' }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: 'var(--font-mono)' }}>
           {shortAddr}
         </span>
 
@@ -151,99 +105,114 @@ export default function WalletButton() {
           <span style={{
             padding: '2px 8px',
             borderRadius: 99,
-            background: 'rgba(168,85,247,0.12)',
-            border: '1px solid rgba(168,85,247,0.2)',
+            background: 'rgba(26,127,55,0.12)',
+            border: '1px solid rgba(26,127,55,0.25)',
             fontSize: 11,
             fontWeight: 700,
-            color: '#a855f7',
+            color: '#22c55e',
           }}>
-            {parseFloat(balance).toFixed(2)} USDC
+            {parseFloat(balance).toFixed(2)}
           </span>
         )}
 
-        <span style={{ fontSize: 9, color: '#7c3aed', marginLeft: 1 }}>
-          {open ? '▲' : '▼'}
-        </span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          {open
+            ? <polyline points="18 15 12 9 6 15"/>
+            : <polyline points="6 9 12 15 18 9"/>
+          }
+        </svg>
       </button>
 
       {open && (
         <div style={{
           position: 'absolute',
-          top: 46,
+          top: '100%',
           right: 0,
-          width: 230,
-          background: '#111118',
-          border: '1px solid rgba(124,58,237,0.2)',
+          marginTop: 4,
+          width: 240,
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border-hover)',
           borderRadius: 12,
-          boxShadow: '0 16px 48px rgba(0,0,0,.6), 0 0 24px rgba(124,58,237,0.08)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           zIndex: 200,
           overflow: 'hidden',
         }}>
-          {/* Badge custodial */}
+          {/* Custodial badge */}
           {isCustodial && (
             <div style={{
               padding: '6px 14px',
-              background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(168,85,247,0.08))',
-              borderBottom: '1px solid rgba(124,58,237,0.15)',
+              background: 'rgba(26,127,55,0.08)',
+              borderBottom: '1px solid var(--border)',
               fontSize: 10,
-              fontWeight: 700,
-              color: '#a78bfa',
+              fontWeight: 600,
+              color: '#22c55e',
               display: 'flex',
               alignItems: 'center',
               gap: 5,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
             }}>
-              <span>🔐</span> Wallet Betly
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+              Wallet Wolves
             </div>
           )}
 
-          {/* Adresse */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {/* Address */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Adresse Polygon
             </div>
-            <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all', lineHeight: 1.5 }}>
               {address}
             </div>
           </div>
 
           {/* Balance */}
-          <div style={{ padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Balance USDC on-chain
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Balance USDC
             </div>
-            <div style={{ fontSize: 20, fontWeight: 900, color: '#a855f7' }}>
-              {balance !== null ? `${parseFloat(balance).toFixed(2)}` : '…'}
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#7c3aed', marginLeft: 4 }}>USDC</span>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>
+              {balance !== null ? parseFloat(balance).toFixed(2) : '...'}
+              <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginLeft: 4 }}>USDC</span>
             </div>
           </div>
 
           {/* Actions */}
           {[
-            { label: '⬇️  Déposer',  href: '/account?tab=deposit'  },
-            { label: '⬆️  Retirer',  href: '/account?tab=withdraw' },
-          ].map(({ label, href }) => (
+            { label: 'Deposer', href: '/account?tab=deposit', icon: 'M12 19V5M5 12l7-7 7 7' },
+            { label: 'Retirer', href: '/account?tab=withdraw', icon: 'M12 5v14M19 12l-7 7-7-7' },
+          ].map(({ label, href, icon }) => (
             <a
               key={href}
               href={href}
               onClick={() => setOpen(false)}
               style={{
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
                 padding: '10px 16px',
                 fontSize: 13,
-                fontWeight: 600,
-                color: '#94a3b8',
+                fontWeight: 500,
+                color: 'var(--text-secondary)',
                 textDecoration: 'none',
-                borderBottom: '1px solid rgba(255,255,255,0.04)',
+                borderBottom: '1px solid var(--border)',
                 transition: 'all .1s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.08)'; e.currentTarget.style.color = '#c4b5fd'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#94a3b8'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d={icon}/>
+              </svg>
               {label}
             </a>
           ))}
 
-          {/* Déconnecter — uniquement si wallet externe */}
+          {/* Disconnect — external wallet only */}
           {!isCustodial && (
             <button
               onClick={async () => {
@@ -254,17 +223,23 @@ export default function WalletButton() {
                 width: '100%',
                 textAlign: 'left',
                 padding: '10px 16px',
-                background: 'none',
+                background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: 13,
-                color: '#ef4444',
+                color: 'var(--red)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
                 transition: 'all .1s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.08)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--red-dim)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              Déconnecter wallet
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Deconnecter
             </button>
           )}
         </div>
