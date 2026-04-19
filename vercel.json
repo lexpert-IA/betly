@@ -1,13 +1,14 @@
 {
   "version": 2,
+  "outputDirectory": "web/dist",
   "functions": {
     "api/index.js": {
-      "includeFiles": "../web/dist/**,../web/public/**,../src/**,../db/**,../config/**,../index.js"
+      "includeFiles": "../src/**,../db/**,../config/**,../index.js,../web/public/**"
     }
   },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/__/auth/(.*)", "destination": "/api/index.js" },
-    { "source": "/(.*)", "destination": "/api/index.js" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
