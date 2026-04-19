@@ -8,15 +8,15 @@ import { computeAvatarColor } from '../hooks/useAuth';
 import CopyTradeButton from '../components/CopyTradeButton';
 import ShareButton from '../components/ShareButton';
 import { apiFetch } from '../lib/api';
-import BetlyLoader from '../components/BetlyLoader';
+import WolvesLoader from '../components/BetlyLoader';
 
 // ── Level config ──────────────────────────────────────────────────────────────
 const LEVELS = {
-  debutant: { emoji: '', label: 'Débutant',  color: '#22c55e', desc: '0–10 paris' },
-  actif:    { emoji: '', label: 'Actif',      color: '#60a5fa', desc: '11–50 paris' },
-  expert:   { emoji: '', label: 'Expert',     color: '#a855f7', desc: '51–200 paris' },
-  oracle:   { emoji: '', label: 'Oracle',     color: '#f59e0b', desc: '201+ paris · WR >65%' },
-  legende:  { emoji: '', label: 'Légende',    color: '#fbbf24', desc: 'Top 10 classement' },
+  debutant: { emoji: '', label: 'Débutant',  color: 'var(--green)', desc: '0–10 paris' },
+  actif:    { emoji: '', label: 'Actif',      color: 'var(--blue)', desc: '11–50 paris' },
+  expert:   { emoji: '', label: 'Expert',     color: 'var(--accent)', desc: '51–200 paris' },
+  oracle:   { emoji: '', label: 'Oracle',     color: 'var(--yellow)', desc: '201+ paris · WR >65%' },
+  legende:  { emoji: '', label: 'Légende',    color: 'var(--yellow)', desc: 'Top 10 classement' },
 };
 
 const BADGE_CONFIG = {
@@ -44,7 +44,7 @@ function LevelBadge({ level, totalBets, winRate, style = {} }) {
 
 function StreakBadge({ streak }) {
   if (!streak || streak < 1) return null;
-  const color = streak >= 30 ? '#f59e0b' : streak >= 7 ? '#f97316' : '#ef4444';
+  const color = streak >= 30 ? 'var(--yellow)' : streak >= 7 ? 'var(--yellow)' : 'var(--red)';
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -60,16 +60,16 @@ function StreakBadge({ streak }) {
 function StatBox({ label, value, color, sub }) {
   return (
     <div style={{
-      background: '#111118', border: '1px solid rgba(255,255,255,0.07)',
+      background: 'var(--bg-tertiary)', border: '1px solid rgba(255,255,255,0.07)',
       borderRadius: 12, padding: '18px 16px', textAlign: 'center',
     }}>
-      <div style={{ fontSize: 24, fontWeight: 800, color: color || '#e2e2e8', marginBottom: 4 }}>
+      <div style={{ fontSize: 24, fontWeight: 800, color: color || 'var(--text-primary)', marginBottom: 4 }}>
         {value}
       </div>
-      <div style={{ fontSize: 11, color: '#6060a0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
         {label}
       </div>
-      {sub && <div style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -128,8 +128,8 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
 
   // ── Styles communs ──
   const S = {
-    card: { background: '#0e0e16', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16 },
-    label: { fontSize: 11, color: '#4a4a6a', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 },
+    card: { background: 'var(--bg-primary)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16 },
+    label: { fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1.2px', fontWeight: 600 },
     divider: { height: 1, background: 'rgba(255,255,255,0.05)', margin: '0' },
   };
 
@@ -143,7 +143,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
   };
 
   const modalStyle = {
-    background: '#111118', borderRadius: 20,
+    background: 'var(--bg-tertiary)', borderRadius: 20,
     border: '1px solid rgba(255,255,255,0.08)',
     boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
     width: '100%', maxWidth: 480, maxHeight: '90vh',
@@ -156,10 +156,10 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
       padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
     }}>
       <div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>Deposit</div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>Deposit</div>
         {typeof betlyBalance === 'number' && (
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
-            Solde Betly: <strong style={{ color: '#a855f7' }}>${betlyBalance.toFixed(2)}</strong>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+            Solde Wolves: <strong style={{ color: 'var(--accent)' }}>${betlyBalance.toFixed(2)}</strong>
           </div>
         )}
       </div>
@@ -167,12 +167,12 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
         onClick={onClose}
         style={{
           width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
-          background: 'rgba(255,255,255,0.05)', color: '#64748b',
+          background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 18, transition: 'all .15s',
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#f8fafc'; }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#64748b'; }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
       >
         ✕
       </button>
@@ -189,10 +189,10 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', margin: '0 0 8px' }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 8px' }}>
             Créer votre portefeuille
           </h2>
-          <p style={{ fontSize: 14, color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0 }}>
             Un portefeuille USDC sur Polygon est requis pour déposer des fonds et parier.
           </p>
         </div>
@@ -211,7 +211,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
           <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
             <div style={{
               width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-              background: 'linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)',
+              background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -222,13 +222,13 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc' }}>Portefeuille Betly</span>
+                <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-primary)' }}>Portefeuille Wolves</span>
                 <span style={{
                   padding: '3px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  background: 'rgba(34,197,94,0.12)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)',
+                  background: 'rgba(34,197,94,0.12)', color: 'var(--green)', border: '1px solid rgba(34,197,94,0.2)',
                 }}>Recommandé</span>
               </div>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 20px', lineHeight: 1.6 }}>
                 Portefeuille non-custodial créé instantanément. Aucune extension de navigateur requise. Compatible avec tous les échanges et bridges.
               </p>
               <div style={{ display: 'flex', gap: 20, marginBottom: 24 }}>
@@ -237,14 +237,14 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                   { icon: '🔐', text: 'Clé privée chiffrée' },
                   { icon: '🌐', text: 'Réseau Polygon' },
                 ].map(({ icon, text }) => (
-                  <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#94a3b8' }}>
+                  <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                     <span>{icon}</span>{text}
                   </div>
                 ))}
               </div>
               {createError && (
                 <div style={{
-                  fontSize: 12, color: '#ef4444', marginBottom: 16, padding: '10px 14px',
+                  fontSize: 12, color: 'var(--red)', marginBottom: 16, padding: '10px 14px',
                   background: 'rgba(239,68,68,0.06)', borderRadius: 10, border: '1px solid rgba(239,68,68,0.15)',
                 }}>
                   {createError}
@@ -255,7 +255,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                 disabled={creatingWallet}
                 style={{
                   padding: '13px 32px', borderRadius: 12, border: 'none',
-                  background: creatingWallet ? 'rgba(124,58,237,0.3)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  background: creatingWallet ? 'rgba(124,58,237,0.3)' : 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
                   color: '#fff', fontSize: 14, fontWeight: 700,
                   cursor: creatingWallet ? 'wait' : 'pointer',
                   boxShadow: creatingWallet ? 'none' : '0 4px 20px rgba(124,58,237,0.3)',
@@ -282,8 +282,8 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
               </svg>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: '#c8c8d8', marginBottom: 2 }}>Connecter un wallet existant</div>
-              <div style={{ fontSize: 12, color: '#475569' }}>MetaMask, Coinbase Wallet, WalletConnect — via le bouton Wallet en haut</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Connecter un wallet existant</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>MetaMask, Coinbase Wallet, WalletConnect — via le bouton Wallet en haut</div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m9 18 6-6-6-6"/>
@@ -307,33 +307,33 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
           {/* Balance row */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>Solde on-chain</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#f8fafc', lineHeight: 1 }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>Solde on-chain</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
                 ${balance !== null ? parseFloat(balance).toFixed(2) : '0.00'}
               </div>
               {balance !== null && (nativeBalance > 0 || bridgedBalance > 0) && (
                 <div style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 12 }}>
-                  {nativeBalance > 0 && <span style={{ color: '#64748b' }}>USDC: <strong style={{ color: '#22c55e' }}>${nativeBalance.toFixed(2)}</strong></span>}
-                  {bridgedBalance > 0 && <span style={{ color: '#64748b' }}>USDC.e: <strong style={{ color: '#60a5fa' }}>${bridgedBalance.toFixed(2)}</strong></span>}
+                  {nativeBalance > 0 && <span style={{ color: 'var(--text-muted)' }}>USDC: <strong style={{ color: 'var(--green)' }}>${nativeBalance.toFixed(2)}</strong></span>}
+                  {bridgedBalance > 0 && <span style={{ color: 'var(--text-muted)' }}>USDC.e: <strong style={{ color: 'var(--blue)' }}>${bridgedBalance.toFixed(2)}</strong></span>}
                 </div>
               )}
             </div>
             <div style={{ textAlign: 'right' }}>
               {typeof betlyBalance === 'number' && (
                 <div style={{ marginBottom: 6 }}>
-                  <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Solde Betly</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#a855f7' }}>${betlyBalance.toFixed(2)}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Solde Wolves</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>${betlyBalance.toFixed(2)}</div>
                 </div>
               )}
               <button
                 onClick={refetch}
                 style={{
                   padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)',
-                  background: 'transparent', color: '#64748b', fontSize: 10, cursor: 'pointer',
+                  background: 'transparent', color: 'var(--text-muted)', fontSize: 10, cursor: 'pointer',
                   transition: 'all .15s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.color = '#a855f7'; e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; }}
-                onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
+                onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
               >
                 Actualiser
               </button>
@@ -350,10 +350,10 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                 <QRCodeSVG value={address} size={64} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                   Ton adresse de d&eacute;p&ocirc;t &middot; Polygon
                 </div>
-                <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', wordBreak: 'break-all', lineHeight: 1.5 }}>
                   {address}
                 </div>
               </div>
@@ -364,7 +364,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                 width: '100%', padding: '10px', borderRadius: 8, border: 'none',
                 cursor: 'pointer', fontSize: 12, fontWeight: 700,
                 background: copied ? 'rgba(34,197,94,0.1)' : 'rgba(124,58,237,0.1)',
-                color: copied ? '#22c55e' : '#a855f7',
+                color: copied ? 'var(--green)' : 'var(--accent)',
                 transition: 'all .15s',
               }}
             >
@@ -381,8 +381,8 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
               <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
               <path d="M12 9v4"/><path d="M12 17h.01"/>
             </svg>
-            <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5 }}>
-              Envoie uniquement des <strong style={{ color: '#f8fafc' }}>USDC</strong> ou <strong style={{ color: '#f8fafc' }}>USDC.e</strong> sur le r&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong>. Autre token ou r&eacute;seau = fonds perdus.
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+              Envoie uniquement des <strong style={{ color: 'var(--text-primary)' }}>USDC</strong> ou <strong style={{ color: 'var(--text-primary)' }}>USDC.e</strong> sur le r&eacute;seau <strong style={{ color: 'var(--accent)' }}>Polygon</strong>. Autre token ou r&eacute;seau = fonds perdus.
             </div>
           </div>
         </div>
@@ -392,17 +392,17 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
           <div style={{ padding: '14px 24px', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(34,197,94,0.03)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)' }}>
                   ${parseFloat(balance).toFixed(2)} USDC d&eacute;tect&eacute;s
                 </div>
-                <div style={{ fontSize: 11, color: '#64748b' }}>Cr&eacute;dite ton solde Betly</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Cr&eacute;dite ton solde Wolves</div>
               </div>
               <button
                 onClick={checkDeposit}
                 disabled={checking}
                 style={{
                   padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: checking ? 'rgba(34,197,94,0.2)' : '#22c55e',
+                  background: checking ? 'rgba(34,197,94,0.2)' : 'var(--green)',
                   color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0,
                   opacity: checking ? 0.7 : 1, transition: 'all .15s',
                 }}
@@ -414,7 +414,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
               <div style={{
                 marginTop: 8, padding: '8px 12px', borderRadius: 6, fontSize: 12,
                 background: checkResult.error ? 'rgba(239,68,68,0.06)' : checkResult.deposited > 0 ? 'rgba(34,197,94,0.06)' : 'rgba(255,255,255,0.02)',
-                color: checkResult.error ? '#ef4444' : checkResult.deposited > 0 ? '#22c55e' : '#64748b',
+                color: checkResult.error ? 'var(--red)' : checkResult.deposited > 0 ? 'var(--green)' : 'var(--text-muted)',
               }}>
                 {checkResult.error
                   ? `Erreur : ${checkResult.error}`
@@ -428,7 +428,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
 
         {/* ── Tab switcher: Crypto / Fiat ── */}
         <div style={{ padding: '16px 24px 0' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e2e8', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>
             {balance !== null && parseFloat(balance) > 0 ? 'Recharger' : 'Pas encore d\u2019USDC ? Choisis comment en obtenir'}
           </div>
           <div style={{
@@ -455,7 +455,7 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                   padding: '11px 0', border: 'none', cursor: 'pointer',
                   fontSize: 13, fontWeight: fundTab === key ? 700 : 500,
                   background: fundTab === key ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.02)',
-                  color: fundTab === key ? '#a855f7' : '#64748b',
+                  color: fundTab === key ? 'var(--accent)' : 'var(--text-muted)',
                   transition: 'all .15s',
                   borderBottom: fundTab === key ? '2px solid #a855f7' : '2px solid transparent',
                 }}
@@ -470,13 +470,13 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
         {/* ── Crypto tab ── */}
         {fundTab === 'crypto' && (
           <div style={{ padding: '0 24px 24px' }}>
-            <div style={{ fontSize: 13, color: '#94a3b8', lineHeight: 1.6, marginBottom: 12 }}>
-              Envoie des <strong style={{ color: '#22c55e' }}>USDC</strong> ou <strong style={{ color: '#60a5fa' }}>USDC.e</strong> depuis ton wallet ou exchange vers l'adresse ci-dessus.
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 12 }}>
+              Envoie des <strong style={{ color: 'var(--green)' }}>USDC</strong> ou <strong style={{ color: 'var(--blue)' }}>USDC.e</strong> depuis ton wallet ou exchange vers l'adresse ci-dessus.
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
-              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)', color: '#22c55e' }}>USDC</span>
-              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.12)', color: '#60a5fa' }}>USDC.e</span>
-              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.12)', color: '#a855f7' }}>Polygon uniquement</span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)', color: 'var(--green)' }}>USDC</span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(96,165,250,0.06)', border: '1px solid rgba(96,165,250,0.12)', color: 'var(--blue)' }}>USDC.e</span>
+              <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: 'rgba(168,85,247,0.06)', border: '1px solid rgba(168,85,247,0.12)', color: 'var(--accent)' }}>Polygon uniquement</span>
             </div>
 
             {/* Bridge option */}
@@ -484,10 +484,10 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
               padding: '14px 16px', borderRadius: 12,
               background: 'rgba(59,130,246,0.04)', border: '1px solid rgba(59,130,246,0.1)',
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
                 Crypto sur une autre cha&icirc;ne ?
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12, lineHeight: 1.5 }}>
                 Bridge tes USDC depuis Ethereum, Arbitrum, Base ou Optimism vers Polygon.
               </div>
               <a
@@ -515,16 +515,16 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
         {/* ── Fiat tab ── */}
         {fundTab === 'fiat' && (
           <div style={{ padding: '0 24px 24px' }}>
-            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 14, lineHeight: 1.5 }}>
-              Ach&egrave;te des USDC avec ta carte bancaire ou un virement, puis envoie-les sur ton adresse Betly.
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.5 }}>
+              Ach&egrave;te des USDC avec ta carte bancaire ou un virement, puis envoie-les sur ton adresse Wolves.
             </div>
 
             {/* Provider selection */}
             {!fiatProvider ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { key: 'coinbase', name: 'Coinbase', sub: 'Carte bancaire \u00b7 Virement SEPA', color: '#0052ff', letter: 'C', tag: 'Recommand\u00e9', tagColor: '#22c55e' },
-                  { key: 'binance', name: 'Binance', sub: 'Carte \u00b7 Virement \u00b7 P2P', color: '#f0b90b', letter: 'B', letterColor: '#1a1a1a', tag: 'Volumes \u00e9lev\u00e9s', tagColor: '#f59e0b' },
+                  { key: 'coinbase', name: 'Coinbase', sub: 'Carte bancaire \u00b7 Virement SEPA', color: '#0052ff', letter: 'C', tag: 'Recommand\u00e9', tagColor: 'var(--green)' },
+                  { key: 'binance', name: 'Binance', sub: 'Carte \u00b7 Virement \u00b7 P2P', color: '#f0b90b', letter: 'B', letterColor: '#1a1a1a', tag: 'Volumes \u00e9lev\u00e9s', tagColor: 'var(--yellow)' },
                 ].map(({ key, name, sub, color, letter, letterColor, tag, tagColor }) => (
                   <button
                     key={key}
@@ -544,8 +544,8 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                       fontSize: 16, fontWeight: 900, color: letterColor || '#fff',
                     }}>{letter}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>{name}</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>{sub}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{sub}</div>
                     </div>
                     <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700, color: tagColor, background: `${tagColor}12` }}>
                       {tag}
@@ -564,10 +564,10 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                   style={{
                     display: 'flex', alignItems: 'center', gap: 4, marginBottom: 14,
                     background: 'none', border: 'none', cursor: 'pointer',
-                    color: '#64748b', fontSize: 12, padding: 0, transition: 'color .15s',
+                    color: 'var(--text-muted)', fontSize: 12, padding: 0, transition: 'color .15s',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#a855f7'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m15 18-6-6 6-6"/>
@@ -580,13 +580,13 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                   <div style={{ padding: '18px', borderRadius: 12, background: 'rgba(0,82,255,0.04)', border: '1px solid rgba(0,82,255,0.12)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: '#0052ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#fff' }}>C</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Coinbase</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Coinbase</div>
                     </div>
-                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: '#94a3b8', lineHeight: 2.2 }}>
-                      <li>Cr&eacute;e un compte <strong style={{ color: '#e2e2e8' }}>Coinbase</strong> (pi&egrave;ce d'identit&eacute;)</li>
-                      <li>Ach&egrave;te de l'<strong style={{ color: '#22c55e' }}>USDC</strong> par carte ou virement</li>
-                      <li>Clique <strong style={{ color: '#e2e2e8' }}>Envoyer</strong> &rarr; colle ton adresse Betly</li>
-                      <li>S&eacute;lectionne le r&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong></li>
+                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2.2 }}>
+                      <li>Cr&eacute;e un compte <strong style={{ color: 'var(--text-primary)' }}>Coinbase</strong> (pi&egrave;ce d'identit&eacute;)</li>
+                      <li>Ach&egrave;te de l'<strong style={{ color: 'var(--green)' }}>USDC</strong> par carte ou virement</li>
+                      <li>Clique <strong style={{ color: 'var(--text-primary)' }}>Envoyer</strong> &rarr; colle ton adresse Wolves</li>
+                      <li>S&eacute;lectionne le r&eacute;seau <strong style={{ color: 'var(--accent)' }}>Polygon</strong></li>
                     </ol>
                     <a
                       href="https://www.coinbase.com/buy/usdc"
@@ -613,13 +613,13 @@ function DepositModal({ open, onClose, address, userId, betlyBalance, onWalletCr
                   <div style={{ padding: '18px', borderRadius: 12, background: 'rgba(240,185,11,0.04)', border: '1px solid rgba(240,185,11,0.12)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: '#f0b90b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: '#1a1a1a' }}>B</div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>Binance</div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>Binance</div>
                     </div>
-                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: '#94a3b8', lineHeight: 2.2 }}>
-                      <li>Cr&eacute;e un compte <strong style={{ color: '#e2e2e8' }}>Binance</strong> + KYC</li>
-                      <li>Ach&egrave;te de l'<strong style={{ color: '#22c55e' }}>USDC</strong> via "Acheter des cryptos"</li>
-                      <li>Portefeuille &rarr; <strong style={{ color: '#e2e2e8' }}>Retrait</strong> &rarr; USDC</li>
-                      <li>R&eacute;seau <strong style={{ color: '#a855f7' }}>Polygon</strong> &rarr; colle ton adresse</li>
+                    <ol style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 2.2 }}>
+                      <li>Cr&eacute;e un compte <strong style={{ color: 'var(--text-primary)' }}>Binance</strong> + KYC</li>
+                      <li>Ach&egrave;te de l'<strong style={{ color: 'var(--green)' }}>USDC</strong> via "Acheter des cryptos"</li>
+                      <li>Portefeuille &rarr; <strong style={{ color: 'var(--text-primary)' }}>Retrait</strong> &rarr; USDC</li>
+                      <li>R&eacute;seau <strong style={{ color: 'var(--accent)' }}>Polygon</strong> &rarr; colle ton adresse</li>
                     </ol>
                     <a
                       href="https://www.binance.com/fr/buy-sell-crypto"
@@ -695,7 +695,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
       padding: 16,
     }} onClick={e => e.target === e.currentTarget && onClose()}>
     <div style={{
-      background: '#111118', borderRadius: 20,
+      background: 'var(--bg-tertiary)', borderRadius: 20,
       border: '1px solid rgba(255,255,255,0.08)',
       boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
       width: '100%', maxWidth: 480, maxHeight: '90vh',
@@ -707,10 +707,10 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
           padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>
               Retirer des USDC
             </div>
-            <div style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
               Envoie tes USDC vers n'importe quelle adresse Polygon
             </div>
           </div>
@@ -718,12 +718,12 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
             onClick={onClose}
             style={{
               width: 32, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: 'rgba(255,255,255,0.05)', color: '#64748b',
+              background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 18, transition: 'all .15s',
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#f8fafc'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = '#64748b'; }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
           >
             ✕
           </button>
@@ -737,8 +737,8 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
             background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(124,58,237,0.1)',
           }}>
             <div>
-              <div style={{ fontSize: 11, color: '#64748b', marginBottom: 2 }}>Disponible</div>
-              <div style={{ fontSize: 22, fontWeight: 800, color: '#a855f7' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Disponible</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent)' }}>
                 ${available.toFixed(2)}
               </div>
             </div>
@@ -760,7 +760,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
         <div style={{ padding: '0 24px 24px' }}>
           {/* Destination */}
           <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 8 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
               Adresse de destination
             </label>
             <input
@@ -770,8 +770,8 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
               onChange={e => setDest(e.target.value)}
               style={{
                 width: '100%', padding: '14px 16px', borderRadius: 12,
-                background: '#0a0a0f', border: '1px solid rgba(255,255,255,0.08)',
-                color: '#f8fafc', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+                background: 'var(--bg-primary)', border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--text-primary)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
                 transition: 'border-color .15s',
               }}
               onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.4)'}
@@ -782,9 +782,9 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
           {/* Amount */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>Montant</label>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
-                {amount || '0'} <span style={{ color: '#64748b', fontWeight: 400 }}>USDC</span>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Montant</label>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                {amount || '0'} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>USDC</span>
               </span>
             </div>
             <input
@@ -797,8 +797,8 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
               placeholder="0"
               style={{
                 width: '100%', padding: '14px 16px', borderRadius: 12, marginBottom: 10,
-                background: '#0a0a0f', border: '1px solid rgba(255,255,255,0.08)',
-                color: '#f8fafc', fontSize: 20, fontWeight: 700, outline: 'none',
+                background: 'var(--bg-primary)', border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--text-primary)', fontSize: 20, fontWeight: 700, outline: 'none',
                 boxSizing: 'border-box', transition: 'border-color .15s',
               }}
               onFocus={e => e.target.style.borderColor = 'rgba(124,58,237,0.4)'}
@@ -816,7 +816,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
                     background: amount && Math.floor(available * pct / 100) === parseInt(amount)
                       ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.02)',
                     color: amount && Math.floor(available * pct / 100) === parseInt(amount)
-                      ? '#a855f7' : '#64748b',
+                      ? 'var(--accent)' : 'var(--text-muted)',
                   }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.2)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'; }}
@@ -831,7 +831,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
           {status === 'pending' ? (
             <div style={{
               textAlign: 'center', padding: '16px 0',
-              color: '#a855f7', fontSize: 14, fontWeight: 600,
+              color: 'var(--accent)', fontSize: 14, fontWeight: 600,
             }}>
               Traitement en cours...
             </div>
@@ -839,7 +839,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
             <div style={{
               textAlign: 'center', padding: '16px', borderRadius: 12,
               background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)',
-              color: '#22c55e', fontSize: 14, fontWeight: 600,
+              color: 'var(--green)', fontSize: 14, fontWeight: 600,
             }}>
               {msg}
             </div>
@@ -849,7 +849,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
                 <div style={{
                   padding: '12px 16px', borderRadius: 10, marginBottom: 12,
                   background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)',
-                  color: '#ef4444', fontSize: 13,
+                  color: 'var(--red)', fontSize: 13,
                 }}>
                   {msg}
                 </div>
@@ -860,7 +860,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
                 style={{
                   width: '100%', padding: '14px', borderRadius: 12, border: 'none',
                   cursor: (!dest || !amount) ? 'not-allowed' : 'pointer',
-                  background: (!dest || !amount) ? 'rgba(124,58,237,0.2)' : 'linear-gradient(135deg, #7c3aed, #a855f7)',
+                  background: (!dest || !amount) ? 'rgba(124,58,237,0.2)' : 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
                   color: '#fff', fontSize: 15, fontWeight: 800,
                   opacity: (!dest || !amount) ? 0.5 : 1,
                   transition: 'all .2s', letterSpacing: '0.3px',
@@ -881,7 +881,7 @@ function WithdrawModal({ open, onClose, address, betlyBalance, userId }) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
             <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
           </svg>
-          <div style={{ fontSize: 11, color: '#475569', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.6 }}>
             V&eacute;rifie bien l'adresse avant d'envoyer. Les transactions blockchain sont irr&eacute;versibles.
           </div>
         </div>
@@ -910,17 +910,17 @@ function AffiliateSection({ user, session }) {
       background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
       borderRadius: 12, padding: 20, marginBottom: 24,
     }}>
-      <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc', marginBottom: 4 }}>
+      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
         Ton code d'affiliation
       </div>
-      <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14 }}>
         Invite des amis — chaque inscription via ton lien te rapporte des USDC.
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{
           flex: 1, minWidth: 0, padding: '9px 14px', borderRadius: 8,
           background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-          fontSize: 12, color: '#a78bfa', fontFamily: 'monospace',
+          fontSize: 12, color: 'var(--accent)', fontFamily: 'monospace',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {link}
@@ -928,9 +928,9 @@ function AffiliateSection({ user, session }) {
         <button
           onClick={copyLink}
           style={{
-            padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            padding: '9px 18px', borderRadius: 8, cursor: 'pointer',
             background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(124,58,237,0.2)',
-            color: copied ? '#22c55e' : '#a855f7',
+            color: copied ? 'var(--green)' : 'var(--accent)',
             fontSize: 12, fontWeight: 700, flexShrink: 0,
             border: `1px solid ${copied ? 'rgba(34,197,94,0.3)' : 'rgba(124,58,237,0.3)'}`,
             transition: 'all .15s',
@@ -942,13 +942,13 @@ function AffiliateSection({ user, session }) {
           href="/affiliate"
           style={{
             padding: '9px 14px', borderRadius: 8, textDecoration: 'none',
-            background: 'transparent', color: '#64748b',
+            background: 'transparent', color: 'var(--text-muted)',
             fontSize: 12, fontWeight: 600, flexShrink: 0,
             border: '1px solid rgba(255,255,255,0.08)',
             transition: 'color .15s',
           }}
-          onMouseEnter={e => e.currentTarget.style.color = '#a855f7'}
-          onMouseLeave={e => e.currentTarget.style.color = '#64748b'}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
         >
           Voir stats →
         </a>
@@ -975,7 +975,7 @@ export default function Account() {
     ? ((user.wonBets / user.totalBets) * 100).toFixed(1)
     : '0';
 
-  const avatarColor = session ? (session.avatarColor || computeAvatarColor(session.username || '')) : '#7c3aed';
+  const avatarColor = session ? (session.avatarColor || computeAvatarColor(session.username || '')) : 'var(--accent)';
   const displayName = session?.username || user?.username || user?.displayName || 'Anonyme';
   const level = user?.level || 'debutant';
   const streak = user?.currentStreak || 0;
@@ -986,7 +986,7 @@ export default function Account() {
 
       {/* Profile header */}
       <div style={{
-        background: '#111118', border: '1px solid rgba(255,255,255,0.07)',
+        background: 'var(--bg-tertiary)', border: '1px solid rgba(255,255,255,0.07)',
         borderRadius: 16, padding: 28, marginBottom: 24,
         display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
       }}>
@@ -1006,7 +1006,7 @@ export default function Account() {
           <div style={{
             position: 'absolute', bottom: -4, right: -4,
             width: 24, height: 24, borderRadius: '50%',
-            background: '#111118', border: `2px solid ${(LEVELS[level] || LEVELS.debutant).color}66`,
+            background: 'var(--bg-tertiary)', border: `2px solid ${(LEVELS[level] || LEVELS.debutant).color}66`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 12,
           }}>
@@ -1016,7 +1016,7 @@ export default function Account() {
 
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: '#f8fafc', margin: 0 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
               {displayName}
             </h1>
             <LevelBadge level={level} totalBets={user?.totalBets} winRate={winRate} />
@@ -1032,7 +1032,7 @@ export default function Account() {
                 return (
                   <span key={b} title={cfg.desc} style={{
                     padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                    background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
+                    background: 'rgba(245,158,11,0.1)', color: 'var(--yellow)',
                     border: '1px solid rgba(245,158,11,0.25)', cursor: 'help',
                   }}>
                     {cfg.emoji} {cfg.label}
@@ -1043,15 +1043,15 @@ export default function Account() {
           )}
 
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              Réputation: <span style={{ color: '#f59e0b', fontWeight: 600 }}>{user?.reputation || 50}/100</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Réputation: <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>{user?.reputation || 50}/100</span>
             </span>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              Depuis: <span style={{ color: '#94a3b8' }}>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '—'}</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Depuis: <span style={{ color: 'var(--text-secondary)' }}>{user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : '—'}</span>
             </span>
             {user?.longestStreak > 0 && (
-              <span style={{ fontSize: 12, color: '#64748b' }}>
-                Record streak: <span style={{ color: '#f97316', fontWeight: 600 }}>{user.longestStreak}j</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Record streak: <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>{user.longestStreak}j</span>
               </span>
             )}
           </div>
@@ -1062,7 +1062,7 @@ export default function Account() {
               style={{
                 padding: '6px 14px', borderRadius: 7, textDecoration: 'none',
                 background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
-                color: '#a855f7', fontSize: 12, fontWeight: 600,
+                color: 'var(--accent)', fontSize: 12, fontWeight: 600,
               }}
             >
               Profil public
@@ -1072,7 +1072,7 @@ export default function Account() {
               style={{
                 padding: '6px 14px', borderRadius: 7,
                 background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)',
-                color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                color: 'var(--red)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
               }}
             >
               Déconnexion
@@ -1087,7 +1087,7 @@ export default function Account() {
           onClick={() => setDepositOpen(true)}
           style={{
             flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+            background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
             color: '#fff', fontSize: 14, fontWeight: 700,
             boxShadow: '0 4px 20px rgba(124,58,237,0.3)',
             transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -1104,11 +1104,11 @@ export default function Account() {
             flex: 1, padding: '12px 0', borderRadius: 12, cursor: 'pointer',
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.1)',
-            color: '#94a3b8', fontSize: 14, fontWeight: 700,
+            color: 'var(--text-secondary)', fontSize: 14, fontWeight: 700,
             transition: 'all .2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(124,58,237,0.3)'; e.currentTarget.style.color = '#c4b5fd'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5"/><path d="m5 12 7 7 7-7"/></svg>
           Retirer
@@ -1122,16 +1122,16 @@ export default function Account() {
           border: '1px solid rgba(255,255,255,0.07)', marginBottom: 16,
         }}>
           {[
-            { label: 'Disponible', value: Math.max(0, (user.balance || 0) - (user.lockedBalance || 0)), color: '#22c55e' },
-            { label: 'En jeu', value: user.lockedBalance || 0, color: '#f59e0b' },
-            { label: 'Total', value: user.balance || 0, color: '#a855f7' },
+            { label: 'Disponible', value: Math.max(0, (user.balance || 0) - (user.lockedBalance || 0)), color: 'var(--green)' },
+            { label: 'En jeu', value: user.lockedBalance || 0, color: 'var(--yellow)' },
+            { label: 'Total', value: user.balance || 0, color: 'var(--accent)' },
           ].map(({ label, value, color }) => (
             <div key={label} style={{
               flex: 1, padding: '10px 0', textAlign: 'center',
-              background: '#111118', borderRight: '1px solid rgba(255,255,255,0.07)',
+              background: 'var(--bg-tertiary)', borderRight: '1px solid rgba(255,255,255,0.07)',
             }}>
               <div style={{ fontSize: 14, fontWeight: 800, color }}>${value.toFixed(2)}</div>
-              <div style={{ fontSize: 10, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
             </div>
           ))}
         </div>
@@ -1147,12 +1147,12 @@ export default function Account() {
       {/* Level progression bar */}
       {user && (
         <div style={{
-          background: '#111118', border: '1px solid rgba(255,255,255,0.07)',
+          background: 'var(--bg-tertiary)', border: '1px solid rgba(255,255,255,0.07)',
           borderRadius: 12, padding: '14px 18px', marginBottom: 20,
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Progression</span>
-            <span style={{ fontSize: 12, color: '#64748b' }}>{user.totalBets || 0} paris au total</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Progression</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{user.totalBets || 0} paris au total</span>
           </div>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             {Object.entries(LEVELS).map(([key, cfg]) => {
@@ -1168,7 +1168,7 @@ export default function Account() {
                         : 'rgba(255,255,255,0.06)',
                     boxShadow: isCurrent ? `0 0 8px ${cfg.color}66` : 'none',
                   }} />
-                  <span style={{ fontSize: 9, color: isCurrent ? cfg.color : '#475569' }}>
+                  <span style={{ fontSize: 9, color: isCurrent ? cfg.color : 'var(--text-muted)' }}>
                     {cfg.emoji}
                   </span>
                 </div>
@@ -1184,13 +1184,13 @@ export default function Account() {
       )}
 
       {error && activeTab === 'stats' && (
-        <div style={{ padding: 12, borderRadius: 8, marginBottom: 16, background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: 13 }}>
+        <div style={{ padding: 12, borderRadius: 8, marginBottom: 16, background: 'rgba(239,68,68,0.1)', color: 'var(--red)', fontSize: 13 }}>
           Erreur: {error}
         </div>
       )}
 
       {loading ? (
-        <BetlyLoader size={90} text="Chargement du compte..." />
+        <WolvesLoader size={90} text="Chargement du compte..." />
       ) : (
         <>
           {/* Stats grid */}
@@ -1199,7 +1199,7 @@ export default function Account() {
             <StatBox label="Balance" value={`${(user?.balance || 0).toFixed(2)}`} color="#a78bfa" sub="USDC" />
             <StatBox label="Total Paris" value={user?.totalBets || 0} color="#60a5fa" />
             <StatBox label="Gagnés" value={user?.wonBets || 0} color="#22c55e" />
-            <StatBox label="Win Rate" value={`${winRate}%`} color={parseFloat(winRate) >= 50 ? '#22c55e' : '#ef4444'} />
+            <StatBox label="Win Rate" value={`${winRate}%`} color={parseFloat(winRate) >= 50 ? 'var(--green)' : 'var(--red)'} />
             <StatBox label="Gains" value={`${(user?.totalEarned || 0).toFixed(2)}`} color="#22c55e" sub="USDC" />
             <StatBox label="Streak" value={streak > 0 ? `${streak}j` : '—'} color="#f97316" />
           </div>
@@ -1209,17 +1209,17 @@ export default function Account() {
 
           {/* Recent bets */}
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: '#e2e2e8', marginBottom: 12 }}>Paris récents</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>Paris récents</h2>
             {recentBets.length === 0 ? (
               <div style={{
-                textAlign: 'center', padding: 32, color: '#6060a0', fontSize: 13,
-                background: '#111118', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
+                textAlign: 'center', padding: 32, color: 'var(--text-muted)', fontSize: 13,
+                background: 'var(--bg-tertiary)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)',
               }}>
                 Aucun pari encore.{' '}
-                <a href="/" style={{ color: '#a78bfa', textDecoration: 'none' }}>Voir les marchés →</a>
+                <a href="/" style={{ color: 'var(--accent)', textDecoration: 'none' }}>Voir les marchés →</a>
               </div>
             ) : (
-              <div style={{ background: '#111118', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--bg-tertiary)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 10, overflow: 'hidden' }}>
                 {recentBets.map((bet, i) => (
                   <div
                     key={bet._id || i}
@@ -1237,20 +1237,20 @@ export default function Account() {
                       <span style={{
                         padding: '2px 8px', borderRadius: 4,
                         background: bet.side === 'YES' ? 'rgba(124,58,237,0.15)' : 'rgba(148,163,184,0.15)',
-                        color: bet.side === 'YES' ? '#a855f7' : '#94a3b8',
+                        color: bet.side === 'YES' ? 'var(--accent)' : 'var(--text-secondary)',
                         fontWeight: 700, fontSize: 11,
                       }}>
                         {bet.side === 'YES' ? 'OUI' : 'NON'}
                       </span>
-                      <span style={{ color: '#94a3b8', fontSize: 12 }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                         {new Date(bet.placedAt).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: '#e2e2e8', fontWeight: 600 }}>{bet.amount} USDC</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{bet.amount} USDC</span>
                       <span style={{
                         padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                        color: bet.status === 'won' ? '#22c55e' : bet.status === 'lost' ? '#ef4444' : '#64748b',
+                        color: bet.status === 'won' ? 'var(--green)' : bet.status === 'lost' ? 'var(--red)' : 'var(--text-muted)',
                         background: bet.status === 'won' ? 'rgba(34,197,94,0.1)' : bet.status === 'lost' ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.05)',
                       }}>
                         {bet.status === 'won' ? '✓ Gagné' : bet.status === 'lost' ? '✗ Perdu' : 'En cours'}

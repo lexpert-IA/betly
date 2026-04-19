@@ -3,15 +3,15 @@ import { useApi } from '../hooks/useApi';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../hooks/useAuth';
 import { Bot, Copy } from 'lucide-react';
-import BetlyLoader from '../components/BetlyLoader';
+import WolvesLoader from '../components/BetlyLoader';
 
 const RANK = (i) => i === 0 ? '#1' : i === 1 ? '#2' : i === 2 ? '#3' : String(i + 1);
 
 const rankColor = (i) => {
-  if (i === 0) return '#f59e0b';
-  if (i === 1) return '#9090a0';
+  if (i === 0) return 'var(--yellow)';
+  if (i === 1) return 'var(--text-secondary)';
   if (i === 2) return '#b87333';
-  return '#6060a0';
+  return 'var(--text-muted)';
 };
 
 function TabBtn({ active, onClick, children }) {
@@ -23,7 +23,7 @@ function TabBtn({ active, onClick, children }) {
         borderRadius: '7px',
         border: active ? '1px solid #a78bfa' : '1px solid rgba(255,255,255,0.07)',
         background: active ? 'rgba(167,139,250,0.15)' : 'transparent',
-        color: active ? '#a78bfa' : '#9090a0',
+        color: active ? 'var(--accent)' : 'var(--text-secondary)',
         fontSize: '13px',
         fontWeight: 600,
         cursor: 'pointer',
@@ -37,7 +37,7 @@ function TabBtn({ active, onClick, children }) {
 
 function EmptyRow({ msg }) {
   return (
-    <div style={{ textAlign: 'center', padding: '40px', color: '#6060a0', fontSize: '13px' }}>
+    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '13px' }}>
       {msg}
     </div>
   );
@@ -46,12 +46,12 @@ function EmptyRow({ msg }) {
 function RankShareModal({ rank, winRate, earned, onClose }) {
   const [copied, setCopied] = useState(false);
   const rankLabel = `#${rank}`;
-  const tweetText = `${rankLabel} sur BETLY cette semaine\nWin rate : ${winRate}% · +$${earned} gagnés\n→ betly.gg/leaderboard`;
+  const tweetText = `${rankLabel} sur WOLVES cette semaine\nWin rate : ${winRate}% · +$${earned} gagnés\n→ wolves.world/leaderboard`;
   const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
   const waUrl = `https://wa.me/?text=${encodeURIComponent(tweetText)}`;
 
   const copyLink = () => {
-    navigator.clipboard.writeText('https://betly.gg/leaderboard').then(() => {
+    navigator.clipboard.writeText('https://wolves.world/leaderboard').then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -70,9 +70,9 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
         onClick={e => e.stopPropagation()}
         style={{
           width: '100%', maxWidth: 380,
-          background: '#111118',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: 16, overflow: 'hidden',
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--border-hover)',
+          borderRadius: 'var(--radius-xl)', overflow: 'hidden',
         }}
       >
         {/* Header */}
@@ -81,8 +81,8 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
           padding: '14px 18px',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e2e8' }}>Partager mon rang</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6060a0', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
+          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Partager mon rang</span>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
         </div>
 
         {/* Preview card */}
@@ -93,15 +93,15 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
           borderRadius: 12, padding: '20px 18px',
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 11, color: '#6060a0', marginBottom: 8, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Classement BETLY</div>
-          <div style={{ fontSize: 36, fontWeight: 900, color: rank <= 3 ? (rank === 1 ? '#f59e0b' : rank === 2 ? '#9090a0' : '#b87333') : '#a78bfa', marginBottom: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Classement WOLVES</div>
+          <div style={{ fontSize: 36, fontWeight: 900, color: rank <= 3 ? (rank === 1 ? 'var(--yellow)' : rank === 2 ? 'var(--text-secondary)' : '#b87333') : 'var(--accent)', marginBottom: 8 }}>
             {rankLabel}
           </div>
-          <div style={{ fontSize: 13, color: '#e2e2e8', marginBottom: 4 }}>
-            Win rate : <span style={{ color: '#22c55e', fontWeight: 700 }}>{winRate}%</span>
+          <div style={{ fontSize: 13, color: 'var(--text-primary)', marginBottom: 4 }}>
+            Win rate : <span style={{ color: 'var(--green)', fontWeight: 700 }}>{winRate}%</span>
           </div>
-          <div style={{ fontSize: 13, color: '#a78bfa', fontWeight: 700 }}>+${earned} gagnés</div>
-          <div style={{ fontSize: 10, color: '#6060a0', marginTop: 10 }}>betly.gg/leaderboard</div>
+          <div style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>+${earned} gagnés</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 10 }}>wolves.world/leaderboard</div>
         </div>
 
         {/* Share buttons */}
@@ -114,7 +114,7 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '10px 6px', borderRadius: 10,
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-              textDecoration: 'none', color: '#e2e2e8', fontSize: 11, fontWeight: 600,
+              textDecoration: 'none', color: 'var(--text-primary)', fontSize: 11, fontWeight: 600,
             }}
           >
             <span style={{ fontSize: 18 }}>𝕏</span>
@@ -128,7 +128,7 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
               padding: '10px 6px', borderRadius: 10,
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-              textDecoration: 'none', color: '#e2e2e8', fontSize: 11, fontWeight: 600,
+              textDecoration: 'none', color: 'var(--text-primary)', fontSize: 11, fontWeight: 600,
             }}
           >
             <span style={{ fontSize: 18 }}>WA</span>
@@ -141,7 +141,7 @@ function RankShareModal({ rank, winRate, earned, onClose }) {
               padding: '10px 6px', borderRadius: 10,
               background: copied ? 'rgba(34,197,94,0.1)' : 'rgba(255,255,255,0.04)',
               border: copied ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(255,255,255,0.08)',
-              color: copied ? '#22c55e' : '#e2e2e8', fontSize: 11, fontWeight: 600,
+              color: copied ? 'var(--green)' : 'var(--text-primary)', fontSize: 11, fontWeight: 600,
               cursor: 'pointer',
             }}
           >
@@ -189,10 +189,10 @@ export default function Leaderboard() {
   return (
     <div style={{ maxWidth: '700px', margin: '0 auto', padding: '24px 16px' }}>
       <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#e2e2e8', marginBottom: '4px' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
           Classement
         </h1>
-        <p style={{ fontSize: '13px', color: '#6060a0' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
           Les meilleurs parieurs, créateurs et marchés de la communauté.
         </p>
       </div>
@@ -208,7 +208,7 @@ export default function Leaderboard() {
       {error && (
         <div style={{
           padding: '12px', borderRadius: '8px',
-          background: 'rgba(239,68,68,0.1)', color: '#ef4444',
+          background: 'rgba(239,68,68,0.1)', color: 'var(--red)',
           fontSize: '13px', marginBottom: '16px',
         }}>
           Erreur: {error}
@@ -216,12 +216,9 @@ export default function Leaderboard() {
       )}
 
       {loading ? (
-        <BetlyLoader size={100} text="Chargement du classement..." />
+        <WolvesLoader size={100} text="Chargement du classement..." />
       ) : (
-        <div style={{
-          background: '#111118',
-          border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: '10px',
+        <div className="wolves-card" style={{
           overflow: 'hidden',
         }}>
           {/* ── Top parieurs ──────────────────────────────────────── */}
@@ -235,7 +232,7 @@ export default function Leaderboard() {
                   background: 'rgba(167,139,250,0.07)',
                   borderBottom: '1px solid rgba(167,139,250,0.15)',
                 }}>
-                  <span style={{ fontSize: 12, color: '#a78bfa', fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>
                     Tu es #{myRankIdx + 1} cette semaine !
                   </span>
                   <button
@@ -245,7 +242,7 @@ export default function Leaderboard() {
                       padding: '5px 12px', borderRadius: 7,
                       border: '1px solid rgba(167,139,250,0.35)',
                       background: 'rgba(167,139,250,0.12)',
-                      color: '#a78bfa', fontSize: 11, fontWeight: 700,
+                      color: 'var(--accent)', fontSize: 11, fontWeight: 700,
                       cursor: 'pointer',
                     }}
                   >
@@ -264,7 +261,7 @@ export default function Leaderboard() {
                   gridTemplateColumns: '40px 1fr 90px 90px 80px',
                   padding: '10px 16px',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  fontSize: '11px', fontWeight: 600, color: '#6060a0',
+                  fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
                   textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}>
                   <span>#</span>
@@ -296,12 +293,12 @@ export default function Leaderboard() {
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
                       <span style={{ color: rankColor(i), fontWeight: 700 }}>{RANK(i)}</span>
-                      <span style={{ color: '#e2e2e8', fontWeight: 500 }}>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>
                         {user.displayName || user.telegramId || `User #${i + 1}`}
                       </span>
-                      <span style={{ textAlign: 'right', color: '#9090a0' }}>{user.totalBets || 0}</span>
-                      <span style={{ textAlign: 'right', color: '#22c55e' }}>{user.wonBets || 0}</span>
-                      <span style={{ textAlign: 'right', color: '#a78bfa', fontWeight: 600 }}>
+                      <span style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>{user.totalBets || 0}</span>
+                      <span style={{ textAlign: 'right', color: 'var(--green)' }}>{user.wonBets || 0}</span>
+                      <span style={{ textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
                         {(user.totalEarned || 0).toFixed(1)}
                       </span>
                     </div>
@@ -313,14 +310,14 @@ export default function Leaderboard() {
                     }}>
                       <span style={{ fontSize: 18, color: rankColor(i), fontWeight: 700, minWidth: 28 }}>{RANK(i)}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {user.displayName || user.telegramId || `User #${i + 1}`}
                         </div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                           {user.totalBets || 0} paris · {user.wonBets || 0} gagnés
                         </div>
                       </div>
-                      <span style={{ fontSize: 13, color: '#a78bfa', fontWeight: 700 }}>
+                      <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
                         {(user.totalEarned || 0).toFixed(1)} USDC
                       </span>
                     </div>
@@ -338,7 +335,7 @@ export default function Leaderboard() {
                   gridTemplateColumns: '40px 1fr 110px 110px',
                   padding: '10px 16px',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  fontSize: '11px', fontWeight: 600, color: '#6060a0',
+                  fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
                   textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}>
                   <span>#</span>
@@ -368,13 +365,13 @@ export default function Leaderboard() {
                     >
                       <span style={{ color: rankColor(i), fontWeight: 700 }}>{RANK(i)}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: '#e2e2e8', fontWeight: 500 }}>{creator._id || `Creator #${i + 1}`}</span>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{creator._id || `Creator #${i + 1}`}</span>
                         {creator.marketsCreated >= 3 && creator.totalVolume >= 100 && (
-                          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }}>TOP</span>
+                          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: 'var(--yellow)', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }}>TOP</span>
                         )}
                       </div>
-                      <span style={{ textAlign: 'right', color: '#60a5fa' }}>{creator.marketsCreated || 0}</span>
-                      <span style={{ textAlign: 'right', color: '#a78bfa', fontWeight: 600 }}>{(creator.totalVolume || 0).toLocaleString('fr-FR')}</span>
+                      <span style={{ textAlign: 'right', color: 'var(--blue)' }}>{creator.marketsCreated || 0}</span>
+                      <span style={{ textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>{(creator.totalVolume || 0).toLocaleString('fr-FR')}</span>
                     </div>
                     <div className="lb-row-card" style={{
                       padding: '12px 16px',
@@ -384,16 +381,16 @@ export default function Leaderboard() {
                       <span style={{ fontSize: 18, color: rankColor(i), fontWeight: 700, minWidth: 28 }}>{RANK(i)}</span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {creator._id || `Creator #${i + 1}`}
                           </span>
                           {creator.marketsCreated >= 3 && creator.totalVolume >= 100 && (
-                            <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: '#f59e0b', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }}>TOP</span>
+                            <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 4, background: 'rgba(245,158,11,0.15)', color: 'var(--yellow)', fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)' }}>TOP</span>
                           )}
                         </div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{creator.marketsCreated || 0} marchés</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{creator.marketsCreated || 0} marchés</div>
                       </div>
-                      <span style={{ fontSize: 13, color: '#a78bfa', fontWeight: 700 }}>
+                      <span style={{ fontSize: 13, color: 'var(--accent)', fontWeight: 700 }}>
                         {(creator.totalVolume || 0).toLocaleString('fr-FR')} USDC
                       </span>
                     </div>
@@ -411,7 +408,7 @@ export default function Leaderboard() {
                   gridTemplateColumns: '40px 1fr 90px 70px',
                   padding: '10px 16px',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  fontSize: '11px', fontWeight: 600, color: '#6060a0',
+                  fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
                   textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}>
                   <span>#</span>
@@ -443,9 +440,9 @@ export default function Leaderboard() {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <span style={{ color: rankColor(i), fontWeight: 700 }}>{RANK(i)}</span>
-                        <span style={{ color: '#e2e2e8', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{m.title}</span>
-                        <span style={{ textAlign: 'right', color: '#a78bfa', fontWeight: 600 }}>{vol.toLocaleString('fr-FR')}</span>
-                        <span style={{ textAlign: 'right', color: isResolved ? '#22c55e' : '#f59e0b', fontSize: '11px', fontWeight: 700 }}>
+                        <span style={{ color: 'var(--text-primary)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}>{m.title}</span>
+                        <span style={{ textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>{vol.toLocaleString('fr-FR')}</span>
+                        <span style={{ textAlign: 'right', color: isResolved ? 'var(--green)' : 'var(--yellow)', fontSize: '11px', fontWeight: 700 }}>
                           {isResolved ? (m.outcome || 'RES') : 'LIVE'}
                         </span>
                       </div>
@@ -456,9 +453,9 @@ export default function Leaderboard() {
                       }}>
                         <span style={{ fontSize: 18, color: rankColor(i), fontWeight: 700, minWidth: 28 }}>{RANK(i)}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
-                          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                            <span style={{ color: isResolved ? '#22c55e' : '#f59e0b', fontWeight: 700 }}>{isResolved ? (m.outcome || 'RES') : 'LIVE'}</span>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.title}</div>
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            <span style={{ color: isResolved ? 'var(--green)' : 'var(--yellow)', fontWeight: 700 }}>{isResolved ? (m.outcome || 'RES') : 'LIVE'}</span>
                             {' · '}{vol.toLocaleString('fr-FR')} USDC
                           </div>
                         </div>
@@ -478,7 +475,7 @@ export default function Leaderboard() {
                   gridTemplateColumns: '40px 1fr 80px 80px 90px 80px',
                   padding: '10px 16px',
                   borderBottom: '1px solid rgba(255,255,255,0.05)',
-                  fontSize: '11px', fontWeight: 600, color: '#6060a0',
+                  fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
                   textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}>
                   <span>#</span>
@@ -515,7 +512,7 @@ export default function Leaderboard() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
                           <div style={{
                             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                            background: `linear-gradient(135deg, ${agent.avatarColor || '#7c3aed'}, ${(agent.avatarColor || '#7c3aed')}88)`,
+                            background: `linear-gradient(135deg, ${agent.avatarColor || 'var(--accent)'}, ${(agent.avatarColor || 'var(--accent)')}88)`,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             <Bot size={16} color="#fff" strokeWidth={2} />
@@ -525,30 +522,30 @@ export default function Leaderboard() {
                               <span style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 2,
                                 padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                                background: 'rgba(124,58,237,0.12)', color: '#a855f7',
+                                background: 'rgba(124,58,237,0.12)', color: 'var(--accent)',
                               }}>
                                 <Bot size={8} strokeWidth={3} /> IA
                               </span>
-                              <span style={{ color: '#e2e2e8', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ color: 'var(--text-primary)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {agent.agentName}
                               </span>
                             </div>
-                            <div style={{ fontSize: 11, color: '#536471', marginTop: 1 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
                               par @{agent.ownerPseudo}
                               {agent.strategy && <span> · {agent.strategy.length > 40 ? agent.strategy.slice(0, 40) + '…' : agent.strategy}</span>}
                             </div>
                           </div>
                         </div>
-                        <span style={{ textAlign: 'right', color: agent.winRate >= 60 ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                        <span style={{ textAlign: 'right', color: agent.winRate >= 60 ? 'var(--green)' : 'var(--yellow)', fontWeight: 600 }}>
                           {agent.winRate}%
                         </span>
-                        <span style={{ textAlign: 'right', color: agent.roi > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                        <span style={{ textAlign: 'right', color: agent.roi > 0 ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
                           {agent.roi > 0 ? '+' : ''}{agent.roi}%
                         </span>
-                        <span style={{ textAlign: 'right', color: '#a78bfa', fontWeight: 600 }}>
+                        <span style={{ textAlign: 'right', color: 'var(--accent)', fontWeight: 600 }}>
                           ${(agent.totalVolume || 0).toLocaleString()}
                         </span>
-                        <span style={{ textAlign: 'right', color: '#94a3b8' }}>
+                        <span style={{ textAlign: 'right', color: 'var(--text-secondary)' }}>
                           {agent.copiers || 0}
                         </span>
                       </div>
@@ -563,7 +560,7 @@ export default function Leaderboard() {
                         <span style={{ fontSize: 18, color: rankColor(i), fontWeight: 700, minWidth: 28 }}>{RANK(i)}</span>
                         <div style={{
                           width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
-                          background: `linear-gradient(135deg, ${agent.avatarColor || '#7c3aed'}, ${(agent.avatarColor || '#7c3aed')}88)`,
+                          background: `linear-gradient(135deg, ${agent.avatarColor || 'var(--accent)'}, ${(agent.avatarColor || 'var(--accent)')}88)`,
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
                           <Bot size={18} color="#fff" strokeWidth={2} />
@@ -573,23 +570,23 @@ export default function Leaderboard() {
                             <span style={{
                               display: 'inline-flex', alignItems: 'center', gap: 2,
                               padding: '0px 5px', borderRadius: 4, fontSize: 9, fontWeight: 700,
-                              background: 'rgba(124,58,237,0.12)', color: '#a855f7',
+                              background: 'rgba(124,58,237,0.12)', color: 'var(--accent)',
                             }}>
                               <Bot size={8} strokeWidth={3} /> IA
                             </span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
                               {agent.agentName}
                             </span>
-                            <span style={{ fontSize: 11, color: '#536471' }}>par @{agent.ownerPseudo}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>par @{agent.ownerPseudo}</span>
                           </div>
                           <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 11 }}>
-                            <span style={{ color: agent.winRate >= 60 ? '#22c55e' : '#f59e0b', fontWeight: 600 }}>
+                            <span style={{ color: agent.winRate >= 60 ? 'var(--green)' : 'var(--yellow)', fontWeight: 600 }}>
                               {agent.winRate}% WR
                             </span>
-                            <span style={{ color: agent.roi > 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                            <span style={{ color: agent.roi > 0 ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
                               {agent.roi > 0 ? '+' : ''}{agent.roi}% ROI
                             </span>
-                            <span style={{ color: '#a78bfa' }}>
+                            <span style={{ color: 'var(--accent)' }}>
                               ${(agent.totalVolume || 0).toLocaleString()}
                             </span>
                           </div>
@@ -608,7 +605,7 @@ export default function Leaderboard() {
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '8px 20px', borderRadius: 10, textDecoration: 'none',
                   background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
-                  color: '#a855f7', fontSize: 12, fontWeight: 700,
+                  color: 'var(--accent)', fontSize: 12, fontWeight: 700,
                 }}>
                   <Bot size={14} strokeWidth={2} /> Voir tous les agents
                 </a>

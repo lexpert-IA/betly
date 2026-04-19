@@ -2,13 +2,13 @@ import React from 'react';
 import ConfidenceBadge from './ConfidenceBadge';
 import BetBar from './BetBar';
 
-// ── Category palette (matches betly HTML design) ─────────────────────────────
+// ── Category palette (matches wolves HTML design) ─────────────────────────────
 const CATEGORIES = {
   sport:     { color: '#f87171', bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.2)',   label: 'Sport' },
   crypto:    { color: '#fbbf24', bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.2)',  label: 'Crypto' },
   politique: { color: '#c084fc', bg: 'rgba(168,85,247,0.15)', border: 'rgba(168,85,247,0.2)',  label: 'Politique' },
   culture:   { color: '#f472b6', bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.2)',  label: 'Culture' },
-  autre:     { color: '#22d3ee', bg: 'rgba(6,182,212,0.15)',  border: 'rgba(6,182,212,0.2)',   label: 'Autre' },
+  autre:     { color: 'var(--cyan)', bg: 'rgba(6,182,212,0.15)',  border: 'rgba(6,182,212,0.2)',   label: 'Autre' },
 };
 
 // ── Avatar color pool ─────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ function avatarInitials(id) {
 }
 
 function resolveCreatorName(creatorId) {
-  if (!creatorId || creatorId === 'system' || creatorId === 'BETLY') return 'BETLY';
+  if (!creatorId || creatorId === 'system' || creatorId === 'BETLY' || creatorId === 'WOLVES') return 'WOLVES';
   return creatorId;
 }
 
@@ -47,28 +47,20 @@ export default function MarketCard({ market }) {
 
   return (
     <div
-      className="fade-up"
+      className="wolves-card fade-up"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 16,
         padding: 20,
         display: 'flex',
         flexDirection: 'column',
         gap: 14,
         backdropFilter: 'blur(10px)',
-        transition: 'all 0.25s cubic-bezier(.4,0,.2,1)',
         cursor: 'default',
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-        e.currentTarget.style.borderColor = 'rgba(124,58,237,0.25)';
         e.currentTarget.style.transform = 'translateY(-2px)';
-        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,.3), 0 0 0 1px rgba(124,58,237,.08)';
+        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,.3), 0 0 0 1px var(--accent-glow)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
         e.currentTarget.style.transform = 'translateY(0)';
         e.currentTarget.style.boxShadow = 'none';
       }}
@@ -84,10 +76,10 @@ export default function MarketCard({ market }) {
           {avatarInitials(market.creatorId)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#f8fafc', marginBottom: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 1 }}>
             {resolveCreatorName(market.creatorId)}
           </div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{timeRemaining(market.resolutionDate)}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{timeRemaining(market.resolutionDate)}</div>
         </div>
         <span style={{
           fontSize: 11, fontWeight: 700, padding: '3px 10px',
@@ -100,8 +92,8 @@ export default function MarketCard({ market }) {
         {market.polymarketTokenId && (
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 7px',
-            borderRadius: 999, color: '#22d3ee',
-            background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.2)',
+            borderRadius: 999, color: 'var(--cyan)',
+            background: 'var(--cyan-dim)', border: '1px solid rgba(34,211,238,0.2)',
           }}>
             PM
           </span>
@@ -117,12 +109,12 @@ export default function MarketCard({ market }) {
             style={{ width: 18, height: 18, borderRadius: '50%', objectFit: 'cover' }}
             onError={e => { e.currentTarget.style.display = 'none'; }}
           />
-          <span style={{ fontSize: 11, color: '#a855f7', fontWeight: 700 }}>
+          <span style={{ fontSize: 11, color: 'var(--accent)', fontWeight: 700 }}>
             @{market.subjectHandle}
           </span>
           {market.selfMarket && (
             <span style={{
-              fontSize: 9, fontWeight: 700, color: '#f59e0b',
+              fontSize: 9, fontWeight: 700, color: 'var(--yellow)',
               background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.25)',
               padding: '1px 5px', borderRadius: 999,
             }}>Marché auto</span>
@@ -133,7 +125,7 @@ export default function MarketCard({ market }) {
       {/* Question */}
       <a href={`/market/${market._id}`} style={{ textDecoration: 'none' }}>
         <h3 style={{
-          fontSize: 15, fontWeight: 700, color: '#f8fafc',
+          fontSize: 15, fontWeight: 700, color: 'var(--text-primary)',
           lineHeight: 1.4,
           display: '-webkit-box', WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical', overflow: 'hidden',
@@ -156,11 +148,11 @@ export default function MarketCard({ market }) {
               onClick={e => { e.stopPropagation(); }}
               style={{
                 padding: '2px 9px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)',
+                background: 'var(--accent-dim)', border: '1px solid rgba(124,58,237,0.2)',
                 color: '#7c6aac', textDecoration: 'none', transition: 'all .15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.color = '#a855f7'; e.currentTarget.style.background = 'rgba(124,58,237,0.15)'; }}
-              onMouseLeave={e => { e.currentTarget.style.color = '#7c6aac'; e.currentTarget.style.background = 'rgba(124,58,237,0.08)'; }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.background = 'rgba(124,58,237,0.15)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#7c6aac'; e.currentTarget.style.background = 'var(--accent-dim)'; }}
             >
               #{tag}
             </a>
@@ -169,39 +161,35 @@ export default function MarketCard({ market }) {
       )}
 
       {/* Footer */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748b' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
         <div style={{ display: 'flex', gap: 14 }}>
           <span>{market.commentsCount || 0}</span>
           <ConfidenceBadge score={market.confidenceScore} />
         </div>
-        <span style={{ color: '#64748b' }}>Oracle L{market.oracleLevel}</span>
+        <span style={{ color: 'var(--text-muted)' }}>Oracle L{market.oracleLevel}</span>
       </div>
 
       {/* Bet buttons — link to market page */}
       <div style={{ display: 'flex', gap: 8 }}>
         <a
           href={`/market/${market._id}`}
+          className="wolves-btn wolves-btn-yes"
           style={{
-            flex: 1, padding: '10px 0', borderRadius: 10, textDecoration: 'none',
+            flex: 1, padding: '10px 0', textDecoration: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
-            color: '#22c55e', fontSize: 13, fontWeight: 700, transition: 'all 0.15s',
+            fontSize: 13,
           }}
-          onMouseEnter={e => { e.currentTarget.style.background='rgba(34,197,94,0.18)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background='rgba(34,197,94,0.1)'; }}
         >
           Oui {yes}¢
         </a>
         <a
           href={`/market/${market._id}`}
+          className="wolves-btn wolves-btn-no"
           style={{
-            flex: 1, padding: '10px 0', borderRadius: 10, textDecoration: 'none',
+            flex: 1, padding: '10px 0', textDecoration: 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-            background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)',
-            color: '#ef4444', fontSize: 13, fontWeight: 700, transition: 'all 0.15s',
+            fontSize: 13,
           }}
-          onMouseEnter={e => { e.currentTarget.style.background='rgba(239,68,68,0.15)'; }}
-          onMouseLeave={e => { e.currentTarget.style.background='rgba(239,68,68,0.08)'; }}
         >
           Non {no}¢
         </a>

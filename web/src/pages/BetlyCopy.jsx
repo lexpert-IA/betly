@@ -1,6 +1,6 @@
 /**
  * BetlyCopy.jsx — Cockpit Copy Trading Polymarket
- * Données depuis /api/copy/* (Betly backend, Firebase auth)
+ * Données depuis /api/copy/* (Wolves backend, Firebase auth)
  * Aucune dépendance localStorage ni Telegram
  */
 
@@ -30,9 +30,9 @@ function isHot(d) {
 }
 
 function scoreColor(s) {
-  if (s >= 75) return '#22c55e';
-  if (s >= 50) return '#f59e0b';
-  return '#ef4444';
+  if (s >= 75) return 'var(--green)';
+  if (s >= 50) return 'var(--yellow)';
+  return 'var(--red)';
 }
 function scoreLabel(s) {
   if (s >= 75) return 'Expert';
@@ -40,7 +40,7 @@ function scoreLabel(s) {
   return 'Junior';
 }
 
-function pnlColor(v) { return v >= 0 ? '#22c55e' : '#ef4444'; }
+function pnlColor(v) { return v >= 0 ? 'var(--green)' : 'var(--red)'; }
 function pnlSign(v)  { return v >= 0 ? '+' : ''; }
 function fmt(v, d=2) { return (v || 0).toFixed(d); }
 
@@ -78,20 +78,20 @@ function useApi(path, interval = 0) {
 // ── Design tokens ─────────────────────────────────────────────────────────────
 
 const C = {
-  bg:     '#0a0a0f',
-  card:   '#111118',
-  border: 'rgba(255,255,255,0.07)',
-  purple: '#7c3aed',
-  purpleL:'#a855f7',
-  text:   '#f8fafc',
-  muted:  '#64748b',
-  dim:    '#94a3b8',
+  bg:     'var(--bg-primary)',
+  card:   'var(--bg-tertiary)',
+  border: 'var(--border)',
+  purple: 'var(--accent)',
+  purpleL:'var(--accent)',
+  text:   'var(--text-primary)',
+  muted:  'var(--text-muted)',
+  dim:    'var(--text-secondary)',
 };
 
 const card = {
-  background: C.card,
-  border: `1px solid ${C.border}`,
-  borderRadius: 14,
+  background: 'var(--bg-tertiary)',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius-lg)',
 };
 
 // ── Atoms ─────────────────────────────────────────────────────────────────────
@@ -104,7 +104,7 @@ function Dot({ active, size = 7 }) {
   return (
     <span style={{
       display: 'inline-block', width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: active ? '#22c55e' : '#334155',
+      background: active ? '#22c55e' : 'var(--text-muted)',
       boxShadow: active ? '0 0 6px rgba(34,197,94,.7)' : 'none',
       animation: active ? 'pulse-dot 1.5s ease infinite' : 'none',
     }} />
@@ -129,7 +129,7 @@ function Toggle({ value, onChange, label }) {
         onClick={() => onChange(!value)}
         style={{
           width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-          background: value ? C.purple : '#1e293b',
+          background: value ? C.purple : 'var(--bg-secondary)',
           position: 'relative', transition: 'background .2s', flexShrink: 0,
         }}
       >
@@ -239,14 +239,14 @@ function CopyModal({ wallet, config, balance, onClose, onSaved }) {
             onChange={e => setAlloc(+e.target.value)}
             style={{ width: '100%', accentColor: C.purpleL, marginBottom: 6 }}
           />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)' }}>
             {['1%','10%','25%','50%'].map(l => <span key={l}>{l}</span>)}
           </div>
         </div>
 
         {/* Info */}
         <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(124,58,237,0.07)', marginBottom: 20, fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
-          Chaque fois que ce trader ouvre une position, Betly en copie une portion selon ton allocation.
+          Chaque fois que ce trader ouvre une position, Wolves en copie une portion selon ton allocation.
           Une commission de <b style={{ color: C.purpleL }}>0.5%</b> est prélevée.
         </div>
 
@@ -423,7 +423,7 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
           value={`${pnlSign(stats?.totalPnl)}${fmt(stats?.totalPnl)} USDC`}
           color={pnlColor(stats?.totalPnl || 0)}
         />
-        <StatBox label="Win Rate" value={`${stats?.winRate || 0}%`} color={stats?.winRate >= 55 ? '#22c55e' : '#f59e0b'} />
+        <StatBox label="Win Rate" value={`${stats?.winRate || 0}%`} color={stats?.winRate >= 55 ? 'var(--green)' : 'var(--yellow)'} />
         <StatBox label="Trades copiés" value={stats?.executedTrades || 0} sub={stats?.paperMode ? 'mode papier' : 'réels'} />
         <StatBox label="Whales suivies" value={stats?.followedCount || 0} sub="actives" />
       </div>
@@ -445,7 +445,7 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
           {config?.copyEnabled ? 'Copy trading actif' : 'Copy trading en pause'}
         </span>
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexWrap: 'wrap' }}>
-          <Badge color={config?.mode === 'auto' ? '#22c55e' : '#f59e0b'}>
+          <Badge color={config?.mode === 'auto' ? 'var(--green)' : 'var(--yellow)'}>
             {config?.mode === 'auto' ? '⚡ Auto' : '👆 Manuel'}
           </Badge>
           {config?.paperMode && <Badge color="#60a5fa">📝 Paper mode</Badge>}
@@ -486,7 +486,7 @@ function TabDashboard({ stats, config, trades, onTabChange }) {
               <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>{(t.marketTitle || '').slice(0, 40) || '—'}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: t.outcome === 'YES' ? '#22c55e' : '#f59e0b' }}>{t.outcome}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: t.outcome === 'YES' ? 'var(--green)' : 'var(--yellow)' }}>{t.outcome}</div>
               <div style={{ fontSize: 11, color: C.muted }}>{fmt(t.amount)} USDC</div>
             </div>
             <div style={{ fontSize: 10, color: C.muted, width: 40, textAlign: 'right' }}>{relTime(t.executedAt)}</div>
@@ -527,7 +527,7 @@ function TabTraders({ config, balance, onConfigUpdate }) {
           }}>{s.label}</button>
         ))}
         {data?.source === 'unavailable' && (
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: '#ef4444', alignSelf: 'center' }}>
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--red)', alignSelf: 'center' }}>
             ⚠️ Polyfrench hors ligne
           </span>
         )}
@@ -708,7 +708,7 @@ function TabMyCopies({ config, balance, onConfigUpdate }) {
               style={{
                 padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600,
                 background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)',
-                color: '#ef4444', opacity: stopping === w.address ? 0.5 : 1,
+                color: 'var(--red)', opacity: stopping === w.address ? 0.5 : 1,
               }}
             >
               {stopping === w.address ? '…' : 'Arrêter'}
@@ -741,7 +741,7 @@ function TabTrades() {
 
   const STATUS_COLOR = {
     executed: '#22c55e', paper: '#60a5fa',
-    failed: '#ef4444', pending: '#f59e0b', cancelled: C.muted,
+    failed: 'var(--red)', pending: 'var(--yellow)', cancelled: C.muted,
   };
   const STATUS_LABEL = {
     executed: 'Exécuté', paper: 'Papier',
@@ -761,7 +761,7 @@ function TabTrades() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {FILTERS.map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)} style={{
-            padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12,
+            padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 12,
             background: filter === f.key ? `rgba(124,58,237,0.2)` : 'rgba(255,255,255,0.05)',
             color: filter === f.key ? C.purpleL : C.muted, fontWeight: filter === f.key ? 700 : 400,
             border: filter === f.key ? `1px solid rgba(124,58,237,0.4)` : '1px solid transparent',
@@ -810,7 +810,7 @@ function TabTrades() {
             </div>
 
             <div style={{ textAlign: 'center', minWidth: 36 }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: t.outcome === 'YES' ? '#22c55e' : '#f59e0b' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: t.outcome === 'YES' ? 'var(--green)' : 'var(--yellow)' }}>
                 {t.outcome}
               </span>
             </div>
@@ -900,7 +900,7 @@ function TabAlerts({ config, trades }) {
           >
             {filterMine ? '★ Mes whales' : '☆ Mes whales'}
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#22c55e' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--green)' }}>
             <Dot active /> Polling 5s
           </div>
         </div>
@@ -933,7 +933,7 @@ function TabAlerts({ config, trades }) {
               <div style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>
                 <span style={{ fontFamily: 'monospace', color: C.dim }}>{short(a.walletAddress)}</span>
                 {' → '}
-                <span style={{ fontWeight: 800, color: a.side === 'YES' || a.outcome === 'Yes' ? '#22c55e' : '#f59e0b' }}>
+                <span style={{ fontWeight: 800, color: a.side === 'YES' || a.outcome === 'Yes' ? 'var(--green)' : 'var(--yellow)' }}>
                   {a.side === 'YES' || a.outcome === 'Yes' ? 'OUI' : 'NON'}
                 </span>
                 {' '}
@@ -980,7 +980,7 @@ function TabAlerts({ config, trades }) {
             <div style={{ fontSize: 12, color: C.muted, marginBottom: 16, lineHeight: 1.6 }}>
               <span style={{ fontFamily: 'monospace' }}>{short(copyAlert.walletAddress)}</span>
               {' → '}
-              <span style={{ fontWeight: 700, color: (copyAlert.side === 'YES' || copyAlert.outcome === 'Yes') ? '#22c55e' : '#f59e0b' }}>
+              <span style={{ fontWeight: 700, color: (copyAlert.side === 'YES' || copyAlert.outcome === 'Yes') ? 'var(--green)' : 'var(--yellow)' }}>
                 {(copyAlert.side === 'YES' || copyAlert.outcome === 'Yes') ? 'OUI' : 'NON'}
               </span>
               {' · '}
@@ -1111,19 +1111,19 @@ function TabSettings({ config, onConfigUpdate }) {
           <input type="range" min={1} max={500} step={1} value={form.maxPerTrade}
             onChange={e => setForm(f => ({ ...f, maxPerTrade: +e.target.value }))}
             style={{ width: '100%', accentColor: C.purpleL }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
             <span>1 USDC</span><span>100</span><span>250</span><span>500 USDC</span>
           </div>
         </div>
         <div style={{ marginTop: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span style={{ fontSize: 13, color: C.dim }}>Stop-loss journalier</span>
-            <span style={{ fontSize: 14, fontWeight: 800, color: '#ef4444' }}>{form.dailyLossLimit} USDC</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--red)' }}>{form.dailyLossLimit} USDC</span>
           </div>
           <input type="range" min={5} max={1000} step={5} value={form.dailyLossLimit}
             onChange={e => setForm(f => ({ ...f, dailyLossLimit: +e.target.value }))}
             style={{ width: '100%', accentColor: '#ef4444' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#334155', marginTop: 4 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
             <span>5 USDC</span><span>100</span><span>500</span><span>1000 USDC</span>
           </div>
         </div>
@@ -1173,7 +1173,7 @@ function TelegramLink() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderRadius: 10, background: 'rgba(34,197,94,0.06)' }}>
         <span style={{ fontSize: 20 }}>✅</span>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>Telegram lié</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--green)' }}>Telegram lié</div>
           <div style={{ fontSize: 11, color: C.muted }}>ID : {user.telegramId}</div>
         </div>
       </div>
@@ -1248,10 +1248,10 @@ export default function BetlyCopy() {
       {/* Header */}
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/betly-icon.png" alt="BETLY" style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: 10, flexShrink: 0 }} />
+          <img src="/wolves-icon.png" alt="WOLVES" style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, borderRadius: 10, flexShrink: 0 }} />
           <div>
             <h1 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 900, color: C.text, margin: '0 0 4px' }}>
-              BETLY <span style={{ background: `linear-gradient(135deg, ${C.purple}, ${C.purpleL})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Copy</span>
+              WOLVES <span style={{ background: `linear-gradient(135deg, var(--accent), var(--accent-hover))`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Copy</span>
             </h1>
             <p style={{ fontSize: 12, color: C.muted, margin: 0 }}>
               Cockpit copy-trading Polymarket · Données en temps réel
@@ -1266,7 +1266,7 @@ export default function BetlyCopy() {
             alignItems: 'center',
           }}>
             <Dot active />
-            <span style={{ fontSize: 11, color: '#22c55e', fontWeight: 700 }}>Live</span>
+            <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 700 }}>Live</span>
           </div>
         </div>
       </div>
@@ -1297,7 +1297,7 @@ export default function BetlyCopy() {
             {t.count > 0 && (
               <span style={{
                 background: tab === t.key ? 'rgba(124,58,237,0.3)' : 'rgba(255,255,255,0.08)',
-                color: tab === t.key ? '#c4b5fd' : '#475569',
+                color: tab === t.key ? '#c4b5fd' : 'var(--text-muted)',
                 borderRadius: 999, padding: '1px 6px', fontSize: 10, fontWeight: 700,
               }}>{t.count}</span>
             )}

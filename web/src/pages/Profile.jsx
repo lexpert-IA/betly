@@ -2,21 +2,18 @@ import React, { useState } from 'react';
 import { useApi, useUserId } from '../hooks/useApi';
 import { apiFetch } from '../lib/api';
 import ShareButton from '../components/ShareButton';
-import BetlyLoader from '../components/BetlyLoader';
+import WolvesLoader from '../components/BetlyLoader';
 
 function StatBox({ label, value, color }) {
   return (
-    <div style={{
-      background: '#111118',
-      border: '1px solid rgba(255,255,255,0.07)',
-      borderRadius: '10px',
+    <div className="wolves-card" style={{
       padding: '14px 16px',
       textAlign: 'center',
     }}>
-      <div style={{ fontSize: '20px', fontWeight: 700, color: color || '#e2e2e8', marginBottom: 3 }}>
+      <div style={{ fontSize: '20px', fontWeight: 700, color: color || 'var(--text-primary)', marginBottom: 3 }}>
         {value}
       </div>
-      <div style={{ fontSize: '11px', color: '#6060a0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
         {label}
       </div>
     </div>
@@ -24,10 +21,10 @@ function StatBox({ label, value, color }) {
 }
 
 function statusColor(s) {
-  if (s === 'resolved') return '#22c55e';
-  if (s === 'active')   return '#60a5fa';
-  if (s === 'resolving') return '#f59e0b';
-  return '#6060a0';
+  if (s === 'resolved') return 'var(--green)';
+  if (s === 'active')   return 'var(--blue)';
+  if (s === 'resolving') return 'var(--yellow)';
+  return 'var(--text-muted)';
 }
 
 export default function Profile({ profileId }) {
@@ -66,18 +63,18 @@ export default function Profile({ profileId }) {
 
   return (
     <div style={{ maxWidth: '700px', margin: '0 auto', padding: '24px 16px' }}>
-      <a href="/leaderboard" style={{ color: '#a78bfa', fontSize: '13px', textDecoration: 'none' }}>
+      <a href="/leaderboard" style={{ color: 'var(--accent)', fontSize: '13px', textDecoration: 'none' }}>
         ← Classement
       </a>
 
       {loading && (
-        <BetlyLoader size={100} text="Chargement du profil..." />
+        <WolvesLoader size={100} text="Chargement du profil..." />
       )}
 
       {error && (
         <div style={{
           marginTop: '20px', padding: '12px', borderRadius: '8px',
-          background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px',
+          background: 'rgba(239,68,68,0.1)', color: 'var(--red)', fontSize: '13px',
         }}>
           Erreur: {error}
         </div>
@@ -92,24 +89,24 @@ export default function Profile({ profileId }) {
           }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#e2e2e8', margin: 0 }}>
+                <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
                   {user.displayName || user.username || `User ${profileId.slice(0, 8)}`}
                 </h1>
                 {isTopCreator && (
                   <span style={{
                     fontSize: '11px', padding: '2px 8px', borderRadius: 4,
-                    background: 'rgba(245,158,11,0.15)', color: '#f59e0b',
+                    background: 'rgba(245,158,11,0.15)', color: 'var(--yellow)',
                     fontWeight: 700, border: '1px solid rgba(245,158,11,0.3)',
                   }}>
                     TOP CRÉATEUR
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: '12px', color: '#6060a0', marginTop: 4, fontFamily: 'monospace' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: 4, fontFamily: 'monospace' }}>
                 ID {profileId}
               </p>
-              <p style={{ fontSize: '12px', color: '#9090a0', marginTop: 2 }}>
-                Réputation : <span style={{ color: '#f59e0b', fontWeight: 600 }}>{user.reputation || 50}/100</span>
+              <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 2 }}>
+                Réputation : <span style={{ color: 'var(--yellow)', fontWeight: 600 }}>{user.reputation || 50}/100</span>
                 {' · '}
                 {(user.followedBy || []).length} follower{(user.followedBy || []).length !== 1 ? 's' : ''}
               </p>
@@ -124,7 +121,7 @@ export default function Profile({ profileId }) {
                   borderRadius: '8px',
                   border: isFollowing ? '1px solid rgba(255,255,255,0.15)' : '1px solid #a78bfa',
                   background: isFollowing ? 'rgba(255,255,255,0.05)' : 'rgba(167,139,250,0.15)',
-                  color: isFollowing ? '#9090a0' : '#a78bfa',
+                  color: isFollowing ? 'var(--text-secondary)' : 'var(--accent)',
                   fontSize: '13px', fontWeight: 600, cursor: 'pointer',
                   flexShrink: 0,
                 }}
@@ -147,7 +144,7 @@ export default function Profile({ profileId }) {
             <StatBox
               label="Win rate"
               value={winRate !== '—' ? `${winRate}%` : '—'}
-              color={parseFloat(winRate) >= 50 ? '#22c55e' : '#ef4444'}
+              color={parseFloat(winRate) >= 50 ? 'var(--green)' : 'var(--red)'}
             />
             <StatBox label="Gains totaux"  value={`${(user.totalEarned || 0).toFixed(2)}`} color="#22c55e" />
           </div>
@@ -155,14 +152,10 @@ export default function Profile({ profileId }) {
           {/* Markets created */}
           {marketsCreated.length > 0 && (
             <div style={{ marginBottom: '28px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e2e8', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
                 Marchés créés
               </h2>
-              <div style={{
-                background: '#111118',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: '10px', overflow: 'hidden',
-              }}>
+              <div className="wolves-card" style={{ overflow: 'hidden' }}>
                 {marketsCreated.map((m, i) => {
                   const vol = (m.totalYes || 0) + (m.totalNo || 0);
                   return (
@@ -177,13 +170,13 @@ export default function Profile({ profileId }) {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                       >
                         <span style={{
-                          color: '#e2e2e8', overflow: 'hidden',
+                          color: 'var(--text-primary)', overflow: 'hidden',
                           textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
                         }}>
                           {m.title}
                         </span>
                         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
-                          <span style={{ color: '#9090a0', fontSize: '12px' }}>
+                          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
                             {vol.toLocaleString('fr-FR')} USDC
                           </span>
                           <span style={{
@@ -205,14 +198,10 @@ export default function Profile({ profileId }) {
           {/* Recent bets */}
           {recentBets.length > 0 && (
             <div>
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#e2e2e8', marginBottom: '12px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px' }}>
                 Paris récents
               </h2>
-              <div style={{
-                background: '#111118',
-                border: '1px solid rgba(255,255,255,0.07)',
-                borderRadius: '10px', overflow: 'hidden',
-              }}>
+              <div className="wolves-card" style={{ overflow: 'hidden' }}>
                 {recentBets.map((bet, i) => (
                   <div key={bet._id || i} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -224,20 +213,20 @@ export default function Profile({ profileId }) {
                       <span style={{
                         padding: '2px 7px', borderRadius: 4,
                         background: bet.side === 'YES' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
-                        color: bet.side === 'YES' ? '#22c55e' : '#ef4444',
+                        color: bet.side === 'YES' ? 'var(--green)' : 'var(--red)',
                         fontWeight: 700, fontSize: '11px',
                       }}>
                         {bet.side}
                       </span>
-                      <span style={{ color: '#9090a0' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>
                         {new Date(bet.placedAt).toLocaleDateString('fr-FR')}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ color: '#e2e2e8', fontWeight: 600 }}>{bet.amount} USDC</span>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{bet.amount} USDC</span>
                       <span style={{
                         padding: '2px 8px', borderRadius: 999, fontSize: '11px', fontWeight: 600,
-                        color: bet.status === 'won' ? '#22c55e' : bet.status === 'lost' ? '#ef4444' : '#9090a0',
+                        color: bet.status === 'won' ? 'var(--green)' : bet.status === 'lost' ? 'var(--red)' : 'var(--text-secondary)',
                         background: bet.status === 'won'
                           ? 'rgba(34,197,94,0.1)'
                           : bet.status === 'lost'

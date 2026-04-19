@@ -37,7 +37,7 @@ function ClaimButton({ onChainId, betId, payout, onClaimed }) {
   const { isConnected } = useAccount();
 
   if (!isConnected) return (
-    <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 10 }}>
+    <div style={{ fontSize: 11, color: 'var(--yellow)', marginTop: 10 }}>
       Connecte ton wallet pour encaisser
     </div>
   );
@@ -63,8 +63,8 @@ function ClaimButton({ onChainId, betId, payout, onClaimed }) {
           fontWeight: 700, fontSize: 13, letterSpacing: 0.3,
           background: status === 'success'
             ? 'rgba(34,197,94,0.15)'
-            : 'linear-gradient(135deg, #7c3aed, #a855f7)',
-          color: status === 'success' ? '#22c55e' : '#fff',
+            : 'linear-gradient(135deg, var(--accent), var(--accent-hover))',
+          color: status === 'success' ? 'var(--green)' : '#fff',
           opacity: status === 'claiming' ? 0.6 : 1,
           transition: 'all .2s',
         }}
@@ -73,7 +73,7 @@ function ClaimButton({ onChainId, betId, payout, onClaimed }) {
           : status === 'success' ? '✓ Encaissé'
           : `Encaisser ${payout ? payout.toFixed(2) + ' USDC' : 'mes gains'}`}
       </button>
-      {error && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 6 }}>{error}</div>}
+      {error && <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 6 }}>{error}</div>}
     </div>
   );
 }
@@ -81,7 +81,7 @@ function ClaimButton({ onChainId, betId, payout, onClaimed }) {
 // ── Position Card ────────────────────────────────────────────────────────────
 function PositionCard({ bet, market, onClaimed }) {
   const side = bet.side === 'YES' ? 'Oui' : 'Non';
-  const sideColor = bet.side === 'YES' ? '#a855f7' : '#ef4444';
+  const sideColor = bet.side === 'YES' ? 'var(--accent)' : 'var(--red)';
   const isWon = bet.status === 'won';
   const isLost = bet.status === 'lost';
   const isClaimed = bet.status === 'claimed';
@@ -94,35 +94,34 @@ function PositionCard({ bet, market, onClaimed }) {
 
   // Status config
   let statusBg, statusColor, statusLabel;
-  if (isClaimed) { statusBg = 'rgba(6,182,212,0.1)'; statusColor = '#06b6d4'; statusLabel = 'Encaissé'; }
-  else if (isWon) { statusBg = 'rgba(34,197,94,0.1)'; statusColor = '#22c55e'; statusLabel = 'Gagné'; }
-  else if (isLost) { statusBg = 'rgba(239,68,68,0.1)'; statusColor = '#ef4444'; statusLabel = 'Perdu'; }
-  else { statusBg = 'rgba(34,197,94,0.06)'; statusColor = '#22c55e'; statusLabel = 'Actif'; }
+  if (isClaimed) { statusBg = 'rgba(6,182,212,0.1)'; statusColor = 'var(--cyan)'; statusLabel = 'Encaissé'; }
+  else if (isWon) { statusBg = 'rgba(34,197,94,0.1)'; statusColor = 'var(--green)'; statusLabel = 'Gagné'; }
+  else if (isLost) { statusBg = 'rgba(239,68,68,0.1)'; statusColor = 'var(--red)'; statusLabel = 'Perdu'; }
+  else { statusBg = 'rgba(34,197,94,0.06)'; statusColor = 'var(--green)'; statusLabel = 'Actif'; }
 
   return (
     <div
+      className="wolves-card"
       style={{
-        background: '#111118',
-        border: `1px solid ${canClaim ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.07)'}`,
-        borderRadius: 14, padding: '16px 18px',
-        transition: 'border-color .15s',
+        border: canClaim ? '1px solid rgba(34,197,94,0.3)' : undefined,
+        padding: '16px 18px',
       }}
-      onMouseEnter={e => { if (!canClaim) e.currentTarget.style.borderColor = 'rgba(168,85,247,0.25)'; }}
-      onMouseLeave={e => { if (!canClaim) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
+      onMouseEnter={e => { if (!canClaim) e.currentTarget.style.borderColor = 'var(--accent-glow)'; }}
+      onMouseLeave={e => { if (!canClaim) e.currentTarget.style.borderColor = 'var(--border)'; }}
     >
       {/* Top row: title + status */}
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 12 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <a
             href={market?._id ? `/market/${market._id}` : '#'}
-            style={{ textDecoration: 'none', color: '#e2e8f0', fontSize: 14, fontWeight: 600, lineHeight: 1.4, display: 'block' }}
-            onMouseEnter={e => e.currentTarget.style.color = '#a855f7'}
-            onMouseLeave={e => e.currentTarget.style.color = '#e2e8f0'}
+            style={{ textDecoration: 'none', color: 'var(--text-primary)', fontSize: 14, fontWeight: 600, lineHeight: 1.4, display: 'block' }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-primary)'}
           >
             {market?.title || '—'}
           </a>
           {market?.resolutionDate && (
-            <div style={{ fontSize: 11, color: '#475569', marginTop: 3 }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
               Échéance : {fmtDate(market.resolutionDate)}
             </div>
           )}
@@ -142,7 +141,7 @@ function PositionCard({ bet, market, onClaimed }) {
           display: 'inline-block', marginBottom: 10,
           padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
           background: market.outcome === 'YES' ? 'rgba(168,85,247,0.12)' : 'rgba(239,68,68,0.12)',
-          color: market.outcome === 'YES' ? '#a855f7' : '#ef4444',
+          color: market.outcome === 'YES' ? 'var(--accent)' : 'var(--red)',
         }}>
           Résultat : {market.outcome === 'YES' ? 'Oui' : 'Non'}
         </div>
@@ -156,7 +155,7 @@ function PositionCard({ bet, market, onClaimed }) {
       }}>
         {/* Side */}
         <div>
-          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Position</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Position</div>
           <div style={{
             display: 'inline-block', padding: '2px 10px', borderRadius: 999,
             fontSize: 12, fontWeight: 800,
@@ -168,35 +167,35 @@ function PositionCard({ bet, market, onClaimed }) {
 
         {/* Mise */}
         <div>
-          <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Mise</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>${bet.amount}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Mise</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>${bet.amount}</div>
         </div>
 
         {/* Cote */}
         {bet.odds != null && (
           <div>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Cote</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8' }}>{Math.round(bet.odds * 100)}¢</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Cote</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>{Math.round(bet.odds * 100)}¢</div>
           </div>
         )}
 
         {/* Current value / Payout */}
         {isWon && profit !== 0 && (
           <div>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Gain net</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#22c55e' }}>+${profit.toFixed(2)}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Gain net</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--green)' }}>+${profit.toFixed(2)}</div>
           </div>
         )}
         {isLost && (
           <div>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Perte</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#ef4444' }}>-${bet.amount.toFixed(2)}</div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Perte</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--red)' }}>-${bet.amount.toFixed(2)}</div>
           </div>
         )}
         {bet.status === 'active' && cv != null && (
           <div>
-            <div style={{ fontSize: 10, color: '#475569', marginBottom: 3 }}>Valeur</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: cv >= bet.amount ? '#22c55e' : '#ef4444' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Valeur</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: cv >= bet.amount ? 'var(--green)' : 'var(--red)' }}>
               ${cv.toFixed(2)}
             </div>
           </div>
@@ -241,7 +240,7 @@ export default function PositionsPage() {
   }, [user, filter]);
 
   if (!user) return (
-    <div style={{ textAlign: 'center', padding: '80px 16px', color: '#64748b' }}>
+    <div style={{ textAlign: 'center', padding: '80px 16px', color: 'var(--text-muted)' }}>
       Connecte-toi pour voir tes positions
     </div>
   );
@@ -268,7 +267,7 @@ export default function PositionsPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 900, color: '#f8fafc', margin: 0, letterSpacing: -0.5 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 900, color: 'var(--text-primary)', margin: 0, letterSpacing: -0.5 }}>
           Portfolio
         </h1>
       </div>
@@ -279,15 +278,15 @@ export default function PositionsPage() {
           background: 'linear-gradient(135deg, rgba(168,85,247,0.08), rgba(96,165,250,0.06))',
           border: '1px solid rgba(168,85,247,0.15)', borderRadius: 12, padding: '14px 14px',
         }}>
-          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>En jeu</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#a855f7' }}>${totalInvested.toFixed(2)}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>En jeu</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent)' }}>${totalInvested.toFixed(2)}</div>
         </div>
         <div style={{
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 14px',
         }}>
-          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>P&L Total</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: netPnl >= 0 ? '#22c55e' : '#ef4444' }}>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>P&L Total</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: netPnl >= 0 ? 'var(--green)' : 'var(--red)' }}>
             {netPnl >= 0 ? '+' : ''}{netPnl.toFixed(2)}
           </div>
         </div>
@@ -295,8 +294,8 @@ export default function PositionsPage() {
           background: 'rgba(255,255,255,0.02)',
           border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '14px 14px',
         }}>
-          <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Positions</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>{positions.length}</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Positions</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)' }}>{positions.length}</div>
         </div>
       </div>
 
@@ -314,7 +313,7 @@ export default function PositionsPage() {
               flex: 1, padding: '7px 0', borderRadius: 8,
               border: 'none', cursor: 'pointer',
               background: filter === key ? 'rgba(168,85,247,0.15)' : 'transparent',
-              color: filter === key ? '#a855f7' : '#64748b',
+              color: filter === key ? 'var(--accent)' : 'var(--text-muted)',
               fontWeight: filter === key ? 700 : 500, fontSize: 12,
               transition: 'all .15s',
             }}
@@ -335,27 +334,24 @@ export default function PositionsPage() {
           ))}
         </div>
       ) : positions.length === 0 ? (
-        <div style={{
+        <div className="wolves-card" style={{
           textAlign: 'center', padding: '60px 20px',
-          background: '#111118', borderRadius: 14,
-          border: '1px solid rgba(255,255,255,0.07)',
         }}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#334155" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 16 }}>
             <path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
             <path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0" />
           </svg>
-          <div style={{ fontSize: 15, fontWeight: 600, color: '#94a3b8', marginBottom: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
             {filter === 'active' ? 'Aucune position active' : 'Rien ici'}
           </div>
-          <div style={{ fontSize: 13, color: '#475569', marginBottom: 20 }}>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>
             {filter === 'active' ? 'Place ton premier pari pour commencer' : 'Aucun pari dans cette catégorie'}
           </div>
           <a
             href="/"
+            className="wolves-btn wolves-btn-primary"
             style={{
-              display: 'inline-block', padding: '8px 20px', borderRadius: 8,
-              background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-              color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none',
+              textDecoration: 'none',
             }}
           >
             Explorer les marchés
