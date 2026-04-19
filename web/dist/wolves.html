@@ -1,0 +1,2645 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WOLVES — Loup-Garou IA Live</title>
+  <meta name="description" content="Regardez 8 IAs jouer au Loup-Garou en direct. Pariez sur l'issue.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════ */
+    /* CSS VARIABLES                           */
+    /* ═══════════════════════════════════════ */
+    :root {
+      --bg-primary: #0A0A0F;
+      --bg-secondary: #13131A;
+      --bg-tertiary: #1A1A24;
+      --bg-glass: rgba(19, 19, 26, 0.85);
+      --accent-violet: #7C3AED;
+      --accent-violet-dim: rgba(124, 58, 237, 0.15);
+      --accent-violet-glow: rgba(124, 58, 237, 0.4);
+      --accent-cyan: #06B6D4;
+      --accent-cyan-dim: rgba(6, 182, 212, 0.15);
+      --accent-cyan-glow: rgba(6, 182, 212, 0.4);
+      --danger: #EF4444;
+      --danger-dim: rgba(239, 68, 68, 0.15);
+      --success: #10B981;
+      --success-dim: rgba(16, 185, 129, 0.15);
+      --warning: #F59E0B;
+      --warning-dim: rgba(245, 158, 11, 0.15);
+      --text-primary: #E2E8F0;
+      --text-secondary: #64748B;
+      --text-muted: #475569;
+      --border: rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --font-display: 'Orbitron', sans-serif;
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* RESET & BASE                            */
+    /* ═══════════════════════════════════════ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* KEYFRAMES                               */
+    /* ═══════════════════════════════════════ */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 8px var(--accent-violet-glow); }
+      50% { box-shadow: 0 0 20px var(--accent-violet-glow), 0 0 40px rgba(124, 58, 237, 0.15); }
+    }
+    @keyframes pulseCyan {
+      0%, 100% { box-shadow: 0 0 8px var(--accent-cyan-glow); }
+      50% { box-shadow: 0 0 20px var(--accent-cyan-glow), 0 0 40px rgba(6, 182, 212, 0.15); }
+    }
+    @keyframes shakeElim {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+      20%, 40%, 60%, 80% { transform: translateX(4px); }
+    }
+    @keyframes bannerEnter {
+      0% { opacity: 0; transform: scale(0.6); letter-spacing: 16px; }
+      40% { opacity: 1; transform: scale(1.05); }
+      100% { transform: scale(1); letter-spacing: 8px; }
+    }
+    @keyframes bannerExit {
+      from { opacity: 1; }
+      to { opacity: 0; transform: scale(0.9); }
+    }
+    @keyframes confettiDrop {
+      0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    @keyframes starTwinkle {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.8; }
+    }
+    @keyframes sunPulse {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); }
+    }
+    @keyframes speakingPulse {
+      0%, 100% { border-color: var(--accent-violet); box-shadow: 0 0 12px var(--accent-violet-glow); }
+      50% { border-color: var(--accent-cyan); box-shadow: 0 0 24px var(--accent-cyan-glow); }
+    }
+    @keyframes bubbleIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.9); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(20px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes barPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* SCROLLBAR                               */
+    /* ═══════════════════════════════════════ */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+    * { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.08) transparent; }
+
+    /* ═══════════════════════════════════════ */
+    /* LAYOUT                                  */
+    /* ═══════════════════════════════════════ */
+    #app {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+    #app.visible { display: flex; }
+
+    /* HEADER */
+    #header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(19,19,26,0.98) 0%, rgba(10,10,15,0.92) 100%);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 50;
+      backdrop-filter: blur(16px);
+    }
+    #header::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, var(--accent-violet) 30%, var(--accent-cyan) 70%, transparent 100%);
+      opacity: 0.25;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo {
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+    }
+    #phase-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      transition: all 0.5s ease;
+    }
+    #phase-indicator.day { background: rgba(250,204,21,0.1); border-color: rgba(250,204,21,0.25); color: #FACC15; }
+    #phase-indicator.vote { background: var(--danger-dim); border-color: rgba(239,68,68,0.25); color: var(--danger); }
+    #phase-indicator.night { background: var(--accent-violet-dim); border-color: rgba(124,58,237,0.25); color: #A78BFA; }
+    .phase-icon { font-size: 16px; }
+
+    .header-center {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #round-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-secondary);
+      letter-spacing: 1px;
+    }
+    #timer-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    #spectators-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    #balance-display {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: #FACC15;
+      letter-spacing: 1px;
+      padding: 6px 14px;
+      background: rgba(250, 204, 21, 0.08);
+      border: 1px solid rgba(250, 204, 21, 0.15);
+      border-radius: var(--radius-sm);
+    }
+
+    /* MAIN LAYOUT */
+    #main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* SIDEBAR                                 */
+    /* ═══════════════════════════════════════ */
+    #sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, rgba(13,13,18,1) 100%);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-section {
+      padding: 14px 14px 8px;
+    }
+    .sidebar-section-title {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .match-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .match-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+    .match-info-label { color: var(--text-muted); }
+    .match-info-value { color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; }
+
+    /* Player list */
+    #player-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid transparent;
+      transition: all 0.3s;
+      cursor: default;
+    }
+    .player-card:hover { background: rgba(255,255,255,0.04); }
+    .player-card.speaking {
+      border-color: var(--accent-violet);
+      background: var(--accent-violet-dim);
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+    .player-card.eliminated {
+      opacity: 0.4;
+      filter: grayscale(0.6);
+    }
+    .player-card.eliminating {
+      animation: shakeElim 0.5s ease;
+    }
+    .player-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .player-avatar-ring {
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .player-card.speaking .player-avatar-ring {
+      border-color: var(--accent-violet);
+      animation: speakingPulse 2s ease-in-out infinite;
+    }
+    .player-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .player-name {
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+    }
+    .player-card.eliminated .player-name {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .player-meta {
+      font-size: 9px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .player-status {
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    .player-role-tag {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+    .player-role-tag.wolf { background: var(--danger-dim); color: var(--danger); }
+    .player-role-tag.villager { background: var(--success-dim); color: var(--success); }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+    .btn-verify-global {
+      width: 100%;
+      padding: 8px 0;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: var(--font-body);
+    }
+    .btn-verify-global:hover {
+      background: var(--accent-violet-dim);
+      border-color: rgba(124,58,237,0.3);
+      color: var(--accent-violet);
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* CENTER ZONE                             */
+    /* ═══════════════════════════════════════ */
+    #center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* TABLE AREA */
+    #table-area {
+      flex: 0 0 55%;
+      position: relative;
+      overflow: hidden;
+      transition: background 2s ease;
+    }
+    #table-area.day { background: radial-gradient(ellipse at 50% 60%, rgba(30,30,20,0.3) 0%, transparent 70%); }
+    #table-area.night { background: radial-gradient(ellipse at 50% 60%, rgba(15,10,30,0.5) 0%, transparent 70%); }
+    #table-area.vote { background: radial-gradient(ellipse at 50% 60%, rgba(30,10,10,0.3) 0%, transparent 70%); }
+
+    /* Stars for night mode */
+    .night-stars {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 2s ease;
+    }
+    #table-area.night .night-stars { opacity: 1; }
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: #fff;
+      border-radius: 50%;
+      animation: starTwinkle 3s ease-in-out infinite;
+    }
+
+    /* Center icon (sun/moon/ballot) */
+    #center-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      opacity: 0.5;
+      transition: all 1s ease;
+      pointer-events: none;
+    }
+    #table-area.day #center-icon { animation: sunPulse 4s ease-in-out infinite; }
+
+    /* Player circle positions */
+    #player-circle {
+      position: absolute;
+      inset: 0;
+    }
+    .table-player {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.5s ease;
+      cursor: default;
+    }
+    .table-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+      border: 3px solid rgba(255,255,255,0.1);
+      transition: all 0.5s ease;
+      position: relative;
+      z-index: 2;
+    }
+    .table-player.speaking .table-avatar {
+      border-color: var(--accent-violet);
+      animation: speakingPulse 2s ease-in-out infinite;
+    }
+    .table-player.eliminated .table-avatar {
+      opacity: 0.35;
+      filter: grayscale(0.8);
+      border-color: rgba(255,255,255,0.05);
+    }
+    .table-player.eliminating .table-avatar {
+      animation: shakeElim 0.6s ease;
+    }
+    .table-player-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: center;
+      white-space: nowrap;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+    .table-player.eliminated .table-player-name {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .table-player-role {
+      font-size: 9px;
+      font-weight: 600;
+      padding: 1px 8px;
+      border-radius: 3px;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .table-player-role.revealed { opacity: 1; }
+    .table-player-role.wolf { background: var(--danger-dim); color: var(--danger); }
+    .table-player-role.villager { background: var(--success-dim); color: var(--success); }
+
+    /* Speech bubble */
+    .speech-bubble {
+      position: absolute;
+      bottom: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: 220px;
+      padding: 8px 12px;
+      background: var(--bg-glass);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(12px);
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      z-index: 10;
+      animation: bubbleIn 0.3s ease;
+      pointer-events: none;
+    }
+    .speech-bubble::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: var(--border-hover);
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* CHAT LOG                                */
+    /* ═══════════════════════════════════════ */
+    #chat-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--border);
+      background: rgba(10,10,15,0.5);
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 10px 16px;
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    #chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .chat-msg {
+      animation: fadeInUp 0.3s ease;
+      padding: 4px 0;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+    .chat-speaker {
+      font-weight: 600;
+      margin-right: 6px;
+    }
+    .chat-model-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      background: rgba(255,255,255,0.04);
+      padding: 1px 6px;
+      border-radius: 3px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .chat-text { color: #CBD5E1; }
+    .chat-verify-btn {
+      display: inline-block;
+      margin-left: 6px;
+      cursor: pointer;
+      font-size: 11px;
+      opacity: 0.2;
+      transition: opacity 0.2s, color 0.2s;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      vertical-align: middle;
+    }
+    .chat-verify-btn:hover { opacity: 1; color: var(--accent-cyan); }
+
+    .chat-system {
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 8px 0;
+      font-style: italic;
+    }
+    .chat-elimination {
+      text-align: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--danger);
+      background: var(--danger-dim);
+      border: 1px solid rgba(239,68,68,0.15);
+      border-radius: var(--radius-sm);
+    }
+    .chat-phase {
+      text-align: center;
+      padding: 8px 12px;
+      margin: 4px 0;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+    .chat-vote {
+      color: var(--warning);
+      font-size: 12px;
+      text-align: center;
+      padding: 2px 0;
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* BETTING PANEL                           */
+    /* ═══════════════════════════════════════ */
+    #betting-panel {
+      width: 320px;
+      flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .betting-header {
+      padding: 14px 16px;
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* Main market card — Polymarket/Betly inspired */
+    .market-main {
+      margin: 12px;
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: var(--radius-lg);
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .market-main::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent-violet), var(--accent-cyan));
+      opacity: 0.6;
+    }
+    .market-main-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+    .market-bar-container {
+      height: 36px;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      margin-bottom: 12px;
+      position: relative;
+      background: rgba(255,255,255,0.03);
+    }
+    .market-bar-yes {
+      background: linear-gradient(90deg, rgba(239,68,68,0.8), rgba(239,68,68,0.55));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 50px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      animation: barPulse 3s ease-in-out infinite;
+    }
+    .market-bar-no {
+      background: linear-gradient(90deg, rgba(16,185,129,0.55), rgba(16,185,129,0.8));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 50px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+    .market-main-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-bet-yes, .btn-bet-no {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s;
+      border: 1px solid;
+      letter-spacing: 1px;
+    }
+    .btn-bet-yes {
+      background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08));
+      border-color: rgba(239,68,68,0.3);
+      color: var(--danger);
+    }
+    .btn-bet-yes:hover {
+      background: linear-gradient(135deg, rgba(239,68,68,0.3), rgba(239,68,68,0.15));
+      border-color: rgba(239,68,68,0.6);
+      box-shadow: 0 0 20px rgba(239,68,68,0.15);
+      transform: translateY(-1px);
+    }
+    .btn-bet-no {
+      background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08));
+      border-color: rgba(16,185,129,0.3);
+      color: var(--success);
+    }
+    .btn-bet-no:hover {
+      background: linear-gradient(135deg, rgba(16,185,129,0.3), rgba(16,185,129,0.15));
+      border-color: rgba(16,185,129,0.6);
+      box-shadow: 0 0 20px rgba(16,185,129,0.15);
+      transform: translateY(-1px);
+    }
+    .market-main-pool {
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-top: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Markets scroll area */
+    #markets-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 12px 12px;
+    }
+    .market-group-title {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      padding: 12px 4px 8px;
+      text-transform: uppercase;
+    }
+    .market-card {
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-lg);
+      margin-bottom: 8px;
+      transition: all 0.25s;
+      backdrop-filter: blur(8px);
+    }
+    .market-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(124,58,237,0.2);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .market-card.resolved { opacity: 0.4; pointer-events: none; }
+    .market-card-label {
+      font-size: 12px;
+      color: #CBD5E1;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      line-height: 1.4;
+    }
+    .market-result-tag {
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+      letter-spacing: 0.5px;
+    }
+    .market-result-tag.win { background: var(--success-dim); color: var(--success); }
+    .market-result-tag.lose { background: var(--danger-dim); color: var(--danger); }
+    .market-card-odds {
+      display: flex;
+      gap: 6px;
+    }
+    .market-card-odds button {
+      flex: 1;
+      padding: 8px 0;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+    .market-card-odds .btn-yes:hover {
+      background: linear-gradient(135deg, rgba(239,68,68,0.15), rgba(239,68,68,0.08));
+      border-color: rgba(239,68,68,0.4);
+      color: var(--danger);
+      box-shadow: 0 0 12px rgba(239,68,68,0.1);
+    }
+    .market-card-odds .btn-no:hover {
+      background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08));
+      border-color: rgba(16,185,129,0.4);
+      color: var(--success);
+      box-shadow: 0 0 12px rgba(16,185,129,0.1);
+    }
+    .market-card-pool {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    /* My bets */
+    .my-bets-section {
+      border-top: 1px solid var(--border);
+      padding: 12px;
+      flex-shrink: 0;
+    }
+    .my-bets-title {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    #my-bets-list {
+      max-height: 120px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .my-bet-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      background: rgba(255,255,255,0.02);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+    }
+    .my-bet-label { color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .my-bet-side { font-weight: 600; margin: 0 6px; }
+    .my-bet-side.yes { color: var(--danger); }
+    .my-bet-side.no { color: var(--success); }
+    .my-bet-amount { font-family: var(--font-mono); color: var(--warning); font-weight: 600; }
+    .my-bet-status { margin-left: 6px; font-size: 10px; }
+
+    /* ═══════════════════════════════════════ */
+    /* OVERLAYS                                */
+    /* ═══════════════════════════════════════ */
+
+    /* Generic overlay */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      justify-content: center;
+      align-items: center;
+    }
+    .overlay.active { display: flex; }
+
+    /* Bet modal */
+    .bet-modal {
+      background: linear-gradient(180deg, rgba(19,19,26,0.98) 0%, rgba(13,13,20,0.99) 100%);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      width: 360px;
+      max-width: 90vw;
+      animation: fadeInUp 0.3s ease;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(124,58,237,0.08);
+    }
+    .bet-modal h3 {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+    .bet-modal-market {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .bet-side-tag {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .bet-side-tag.yes { background: var(--danger-dim); color: var(--danger); }
+    .bet-side-tag.no { background: var(--success-dim); color: var(--success); }
+    .bet-amount-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .bet-amount-input {
+      flex: 1;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 18px;
+      font-weight: 600;
+      text-align: center;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .bet-amount-input:focus { border-color: var(--accent-violet); }
+    .bet-preset {
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .bet-preset:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .bet-info {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .bet-info span { color: #FACC15; font-weight: 600; }
+    .bet-payout {
+      font-size: 13px;
+      color: var(--accent-cyan);
+      font-weight: 600;
+      margin-bottom: 16px;
+      font-family: var(--font-mono);
+    }
+    .bet-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-confirm-bet {
+      flex: 1;
+      padding: 12px;
+      background: linear-gradient(135deg, var(--accent-violet), #9333EA);
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-confirm-bet:hover { filter: brightness(1.15); transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-violet-glow); }
+    .btn-cancel-bet {
+      padding: 12px 24px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-family: var(--font-body);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-cancel-bet:hover { background: rgba(255,255,255,0.08); }
+
+    /* Verify modal */
+    .verify-modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      width: 700px;
+      max-width: 90vw;
+      max-height: 80vh;
+      overflow-y: auto;
+      animation: fadeInUp 0.3s ease;
+    }
+    .verify-modal h3 {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent-cyan);
+      margin-bottom: 16px;
+    }
+    .verify-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .verify-meta-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    .verify-meta-item span { color: var(--accent-cyan); font-weight: 600; }
+    .verify-section { margin-bottom: 14px; }
+    .verify-section label {
+      display: block;
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .verify-section pre {
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .btn-close-modal {
+      margin-top: 12px;
+      padding: 8px 24px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      transition: all 0.2s;
+    }
+    .btn-close-modal:hover { background: rgba(255,255,255,0.08); }
+
+    /* Phase banner */
+    #phase-banner {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: rgba(10,10,15,0.88);
+      z-index: 200;
+      pointer-events: none;
+      opacity: 0;
+    }
+    #phase-banner.show {
+      opacity: 1;
+    }
+    #phase-banner.hide {
+      animation: bannerExit 0.6s ease forwards;
+    }
+    #phase-banner-text {
+      font-family: var(--font-display);
+      font-size: clamp(36px, 8vw, 72px);
+      font-weight: 900;
+      letter-spacing: 8px;
+      animation: bannerEnter 0.6s ease;
+    }
+    #phase-banner-text.day { color: #FACC15; text-shadow: 0 0 60px rgba(250,204,21,0.5); }
+    #phase-banner-text.vote { color: var(--danger); text-shadow: 0 0 60px rgba(239,68,68,0.5); }
+    #phase-banner-text.night { color: #A78BFA; text-shadow: 0 0 60px rgba(167,139,250,0.5); }
+    #phase-banner-sub {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 4px;
+      color: var(--text-muted);
+      animation: bannerEnter 0.6s 0.15s ease both;
+    }
+
+    /* Winner overlay */
+    #winner-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: rgba(10,10,15,0.92);
+      z-index: 300;
+    }
+    #winner-overlay.show { display: flex; }
+    #winner-title {
+      font-family: var(--font-display);
+      font-size: clamp(28px, 6vw, 52px);
+      font-weight: 900;
+      letter-spacing: 6px;
+    }
+    #winner-title.wolves { color: var(--danger); text-shadow: 0 0 60px rgba(239,68,68,0.5); }
+    #winner-title.villagers { color: var(--success); text-shadow: 0 0 60px rgba(16,185,129,0.5); }
+    #winner-subtitle { font-size: 16px; color: var(--text-secondary); letter-spacing: 2px; }
+    #winner-payout { font-family: var(--font-mono); font-size: 22px; color: #FACC15; font-weight: 700; }
+    .btn-close-winner {
+      padding: 10px 32px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-close-winner:hover { background: rgba(255,255,255,0.1); }
+
+    /* Confetti */
+    .confetti {
+      position: fixed;
+      top: 0;
+      width: 8px;
+      height: 8px;
+      z-index: 350;
+      pointer-events: none;
+      animation: confettiDrop 3s ease-in forwards;
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* START SCREEN                            */
+    /* ═══════════════════════════════════════ */
+    #start-screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      background: var(--bg-primary);
+      background-image: radial-gradient(ellipse at 30% 50%, rgba(124,58,237,0.06) 0%, transparent 50%),
+                         radial-gradient(ellipse at 70% 30%, rgba(6,182,212,0.04) 0%, transparent 50%);
+      z-index: 400;
+    }
+    #start-screen.hidden { display: none; }
+    .start-logo {
+      font-family: var(--font-display);
+      font-size: clamp(40px, 10vw, 80px);
+      font-weight: 900;
+      letter-spacing: 12px;
+      background: linear-gradient(135deg, var(--accent-violet), var(--accent-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .start-subtitle {
+      font-size: 14px;
+      color: var(--text-muted);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .start-btn {
+      padding: 18px 56px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      background: linear-gradient(135deg, var(--accent-violet), #9333EA);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .start-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 40px var(--accent-violet-glow); }
+    .start-btn:active { transform: translateY(0); }
+    .start-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+    .start-error { color: var(--danger); font-size: 13px; min-height: 20px; }
+
+    /* Start features */
+    .start-features {
+      display: flex;
+      gap: 20px;
+      max-width: 700px;
+      margin-bottom: 8px;
+    }
+    .start-feature {
+      flex: 1;
+      text-align: center;
+      padding: 20px 16px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      transition: all 0.3s;
+    }
+    .start-feature:hover {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(124,58,237,0.2);
+      transform: translateY(-2px);
+    }
+    .start-feature-icon { font-size: 28px; margin-bottom: 8px; }
+    .start-feature-title {
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: var(--accent-violet);
+      margin-bottom: 6px;
+    }
+    .start-feature-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Start balance */
+    .start-balance-info {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .start-balance-amount {
+      font-family: var(--font-mono);
+      font-size: 20px;
+      font-weight: 700;
+      color: #FACC15;
+    }
+    .start-balance-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+
+    /* Start rules */
+    .start-rules {
+      margin-top: 8px;
+      text-align: center;
+    }
+    .start-rules-title {
+      font-family: var(--font-display);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .start-rules-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .start-rules-list span {
+      font-size: 11px;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    @media (max-width: 600px) {
+      .start-features { flex-direction: column; padding: 0 20px; }
+      .start-rules-list { padding: 0 20px; }
+    }
+
+    /* ═══════════════════════════════════════ */
+    /* TOAST                                   */
+    /* ═══════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-glass);
+      border: 1px solid var(--border-hover);
+      border-radius: var(--radius-md);
+      padding: 10px 24px;
+      color: var(--text-primary);
+      font-size: 13px;
+      z-index: 600;
+      display: none;
+      backdrop-filter: blur(12px);
+      animation: fadeInUp 0.3s ease;
+      font-family: var(--font-body);
+    }
+    #toast.show { display: block; }
+
+    /* ═══════════════════════════════════════ */
+    /* MOBILE RESPONSIVE                       */
+    /* ═══════════════════════════════════════ */
+    @media (max-width: 1100px) {
+      #sidebar { width: 60px; }
+      .sidebar-section-title, .match-info, .player-info, .player-role-tag, .sidebar-footer { display: none; }
+      .player-card { padding: 6px; justify-content: center; }
+      .player-avatar { width: 32px; height: 32px; font-size: 12px; }
+      .player-status { position: absolute; top: -2px; right: -2px; font-size: 8px; }
+      .player-card { position: relative; }
+    }
+
+    @media (max-width: 768px) {
+      #header { padding: 0 12px; gap: 8px; }
+      .header-center { display: none; }
+      #sidebar { display: none; }
+      #betting-panel { display: none; }
+      #center { flex: 1; }
+
+      /* Mobile tab bar */
+      #mobile-tabs {
+        display: flex !important;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 56px;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border);
+        z-index: 100;
+      }
+      .mobile-tab {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+      .mobile-tab.active { color: var(--accent-violet); }
+      .mobile-tab-icon { font-size: 20px; }
+
+      #main { padding-bottom: 56px; }
+
+      /* Mobile views */
+      #center.mobile-hidden { display: none; }
+      #betting-panel.mobile-visible { display: flex; width: 100%; }
+      #sidebar.mobile-visible { display: flex; width: 100%; }
+    }
+
+    #mobile-tabs { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ START SCREEN ═══ -->
+  <div id="start-screen">
+    <div class="start-logo">WOLVES</div>
+    <div class="start-subtitle">Loup-Garou &middot; 8 IA &middot; En direct &middot; Pariez</div>
+
+    <div class="start-features">
+      <div class="start-feature">
+        <div class="start-feature-icon">&#129409;</div>
+        <div class="start-feature-title">8 IA JOUENT</div>
+        <div class="start-feature-desc">8 personnages IA s'affrontent dans une partie de Loup-Garou. Debats, votes, eliminations — tout est genere en live.</div>
+      </div>
+      <div class="start-feature">
+        <div class="start-feature-icon">&#127922;</div>
+        <div class="start-feature-title">PARIEZ EN DIRECT</div>
+        <div class="start-feature-desc">Qui sont les loups ? Qui sera elimine ? Pariez vos jetons sur les marches pendant la partie.</div>
+      </div>
+      <div class="start-feature">
+        <div class="start-feature-icon">&#128269;</div>
+        <div class="start-feature-title">TRANSPARENCE TOTALE</div>
+        <div class="start-feature-desc">Chaque message est genere par un LLM. Inspectez les prompts, modeles et latences en un clic.</div>
+      </div>
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="startMatch()">LANCER UNE PARTIE</button>
+    <div class="start-error" id="start-error"></div>
+
+    <div class="start-balance-info">
+      <span class="start-balance-amount" id="start-balance"></span>
+      <span class="start-balance-label">jetons disponibles</span>
+    </div>
+
+    <div class="start-rules">
+      <div class="start-rules-title">REGLES RAPIDES</div>
+      <div class="start-rules-list">
+        <span>&#9788;&#65039; JOUR : les IA debattent et cherchent les loups</span>
+        <span>&#128499;&#65039; VOTE : le village elimine un suspect</span>
+        <span>&#127769; NUIT : les loups devorent un villageois</span>
+        <span>&#127942; FIN : les loups gagnent s'ils egalent les villageois</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN APP ═══ -->
+  <div id="app">
+    <!-- HEADER -->
+    <header id="header">
+      <div class="header-left">
+        <div class="logo">WOLVES</div>
+        <div class="header-divider"></div>
+        <div id="phase-indicator">
+          <span class="phase-icon" id="phase-icon"></span>
+          <span id="phase-text">EN ATTENTE</span>
+        </div>
+      </div>
+      <div class="header-center">
+        <div id="round-label"></div>
+        <div id="timer-label"></div>
+        <div id="spectators-label"></div>
+      </div>
+      <div class="header-right">
+        <div id="balance-display">1 000 W</div>
+      </div>
+    </header>
+
+    <!-- MAIN LAYOUT -->
+    <div id="main">
+      <!-- SIDEBAR -->
+      <aside id="sidebar">
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">MATCH</div>
+          <div class="match-info" id="match-info">
+            <div class="match-info-row">
+              <span class="match-info-label">ID</span>
+              <span class="match-info-value" id="match-id-display">—</span>
+            </div>
+            <div class="match-info-row">
+              <span class="match-info-label">Duree</span>
+              <span class="match-info-value" id="match-duration">0:00</span>
+            </div>
+          </div>
+        </div>
+        <div class="sidebar-section">
+          <div class="sidebar-section-title">JOUEURS</div>
+        </div>
+        <div id="player-list"></div>
+        <div class="sidebar-footer">
+          <button class="btn-verify-global" onclick="showGlobalVerify()">TRANSPARENCE LLM</button>
+        </div>
+      </aside>
+
+      <!-- CENTER -->
+      <div id="center">
+        <!-- TABLE -->
+        <div id="table-area" class="day">
+          <div class="night-stars" id="night-stars"></div>
+          <div id="center-icon"></div>
+          <div id="player-circle"></div>
+        </div>
+
+        <!-- CHAT -->
+        <div id="chat-zone">
+          <div class="chat-header">CHAT EN DIRECT</div>
+          <div id="chat-log"></div>
+        </div>
+      </div>
+
+      <!-- BETTING PANEL -->
+      <div id="betting-panel">
+        <div class="betting-header">
+          <span>MARCHES</span>
+        </div>
+        <div id="main-market"></div>
+        <div id="markets-scroll"></div>
+        <div class="my-bets-section">
+          <div class="my-bets-title">MES PARIS</div>
+          <div id="my-bets-list">
+            <div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">Aucun pari</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE TABS -->
+    <div id="mobile-tabs">
+      <button class="mobile-tab active" data-view="game" onclick="switchMobileView('game')">
+        <span class="mobile-tab-icon">&#9878;</span>
+        JEU
+      </button>
+      <button class="mobile-tab" data-view="chat" onclick="switchMobileView('chat')">
+        <span class="mobile-tab-icon">&#128172;</span>
+        CHAT
+      </button>
+      <button class="mobile-tab" data-view="bets" onclick="switchMobileView('bets')">
+        <span class="mobile-tab-icon">&#127922;</span>
+        PARIS
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE BANNER ═══ -->
+  <div id="phase-banner">
+    <div id="phase-banner-text"></div>
+    <div id="phase-banner-sub"></div>
+  </div>
+
+  <!-- ═══ WINNER OVERLAY ═══ -->
+  <div id="winner-overlay">
+    <div id="winner-title"></div>
+    <div id="winner-subtitle"></div>
+    <div id="winner-payout"></div>
+    <button class="btn-close-winner" onclick="newMatch()">NOUVELLE PARTIE</button>
+    <button class="btn-close-winner" onclick="closeWinner()" style="background:transparent;border-color:rgba(255,255,255,0.08);color:var(--text-muted);font-size:10px;">Fermer</button>
+  </div>
+
+  <!-- ═══ BET OVERLAY ═══ -->
+  <div class="overlay" id="bet-overlay" onclick="if(event.target===this)closeBet()">
+    <div class="bet-modal">
+      <h3>PLACER UN PARI</h3>
+      <div class="bet-modal-market" id="bet-modal-market"></div>
+      <div class="bet-side-tag" id="bet-side-tag"></div>
+      <div class="bet-amount-row">
+        <input type="number" class="bet-amount-input" id="bet-amount" min="1" max="500" value="50">
+        <button class="bet-preset" onclick="setBetAmount(10)">10</button>
+        <button class="bet-preset" onclick="setBetAmount(50)">50</button>
+        <button class="bet-preset" onclick="setBetAmount(100)">100</button>
+        <button class="bet-preset" onclick="setBetAmount(250)">250</button>
+      </div>
+      <div class="bet-info">Solde : <span id="bet-modal-balance">1000</span> W</div>
+      <div class="bet-payout" id="bet-payout">Gain potentiel : —</div>
+      <div class="bet-actions">
+        <button class="btn-confirm-bet" onclick="confirmBet()">PARIER</button>
+        <button class="btn-cancel-bet" onclick="closeBet()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ VERIFY OVERLAY ═══ -->
+  <div class="overlay" id="verify-overlay" onclick="if(event.target===this)closeVerify()">
+    <div class="verify-modal" id="verify-modal-content"></div>
+  </div>
+
+  <!-- ═══ TOAST ═══ -->
+  <div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════ */
+/* STATE                                   */
+/* ═══════════════════════════════════════ */
+var socket = null;
+var matchId = null;
+var players = [];
+var markets = [];
+var myBets = [];
+var pendingBet = null;
+var totalPayout = 0;
+var currentPhase = 'day';
+var currentRound = 0;
+var speakerColors = {};
+var speakerOrder = 0;
+var matchStartTime = null;
+var durationInterval = null;
+var currentSpeaker = null;
+var speechBubbleTimers = {};
+
+var STARTING_TOKENS = 1000;
+var STORAGE_KEY = 'wolves_tokens_v2';
+var BETS_KEY = 'wolves_bets_v2';
+
+var PHASE_LABELS = { day: 'JOUR', vote: 'VOTE', night: 'NUIT' };
+var PHASE_ICONS = { day: '\u2600\uFE0F', vote: '\uD83D\uDDF3\uFE0F', night: '\uD83C\uDF19' };
+
+var AVATAR_COLORS = [
+  '#7C3AED', '#2563EB', '#0891B2', '#059669',
+  '#D97706', '#DC2626', '#9333EA', '#4F46E5'
+];
+var SPEAKER_COLORS = [
+  '#A78BFA', '#60A5FA', '#34D399', '#FBBF24',
+  '#F87171', '#FB923C', '#E879F9', '#22D3EE',
+  '#A3E635', '#F472B6', '#818CF8', '#2DD4BF'
+];
+
+/* ═══════════════════════════════════════ */
+/* BALANCE                                 */
+/* ═══════════════════════════════════════ */
+function getBalance() {
+  var b = localStorage.getItem(STORAGE_KEY);
+  if (b === null) { localStorage.setItem(STORAGE_KEY, STARTING_TOKENS); return STARTING_TOKENS; }
+  return parseInt(b, 10) || 0;
+}
+function setBalance(v) {
+  localStorage.setItem(STORAGE_KEY, Math.max(0, v));
+  updateBalanceUI();
+}
+function updateBalanceUI() {
+  var bal = getBalance();
+  var el = document.getElementById('balance-display');
+  el.textContent = bal.toLocaleString('fr-FR') + ' W';
+  var modalBal = document.getElementById('bet-modal-balance');
+  if (modalBal) modalBal.textContent = bal.toLocaleString('fr-FR');
+}
+
+/* ═══════════════════════════════════════ */
+/* START MATCH                             */
+/* ═══════════════════════════════════════ */
+async function startMatch() {
+  var btn = document.getElementById('start-btn');
+  var err = document.getElementById('start-error');
+
+  // If called from winner overlay (no start screen visible), show loading toast
+  var fromWinner = document.getElementById('start-screen').classList.contains('hidden');
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'CONNEXION...';
+  }
+  if (err) err.textContent = '';
+  if (fromWinner) showToast('Lancement d\'une nouvelle partie...');
+
+  try {
+    var res = await fetch('/api/matches/start', { method: 'POST' });
+    if (!res.ok) throw new Error('Erreur serveur: ' + res.status);
+    var data = await res.json();
+    matchId = data.matchId;
+
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+    updateBalanceUI();
+    startDurationTimer();
+    connectSocket();
+  } catch (e) {
+    if (fromWinner) {
+      showToast('Erreur: ' + e.message);
+    } else {
+      if (err) err.textContent = e.message;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'LANCER UNE PARTIE';
+    }
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* SOCKET                                  */
+/* ═══════════════════════════════════════ */
+function connectSocket() {
+  socket = io();
+  socket.on('connect', function() {
+    socket.emit('join_match', matchId);
+    catchUp();
+  });
+
+  socket.on('match_start', onMatchStart);
+  socket.on('phase_change', onPhaseChange);
+  socket.on('chat_message', onChatMessage);
+  socket.on('vote_cast', onVoteCast);
+  socket.on('vote_result', onVoteResult);
+  socket.on('elimination', onElimination);
+  socket.on('night_kill', onNightKill);
+  socket.on('match_end', onMatchEnd);
+  socket.on('markets_init', onMarketsInit);
+  socket.on('market_update', onMarketUpdate);
+  socket.on('market_resolve', onMarketResolve);
+  socket.on('bet_confirmed', onBetConfirmed);
+  socket.on('bet_error', onBetError);
+}
+
+async function catchUp() {
+  try {
+    var res = await fetch('/api/matches/' + matchId + '/live');
+    if (!res.ok) return;
+    var data = await res.json();
+
+    if (data.match && data.match.players) {
+      players = data.match.players.map(function(p) {
+        return { name: p.characterName || p.name, archetype: p.archetype || '', trait: p.trait || '', alive: p.alive !== false, role: null };
+      });
+      renderSidebarPlayers();
+      renderTablePlayers();
+      document.getElementById('match-id-display').textContent = '#' + matchId.slice(-6);
+      addSystemMsg('La partie commence avec ' + players.length + ' joueurs.');
+    }
+
+    var events = data.events || [];
+    for (var i = 0; i < events.length; i++) {
+      var ev = events[i];
+      if (ev.type === 'chat') {
+        onChatMessage({ speaker: ev.metadata.actorName, text: ev.content, eventId: ev._id, modelLabel: ev.metadata && ev.metadata.llm ? ev.metadata.llm.modelLabel : null }, true);
+      } else if (ev.type === 'phase_change') {
+        onPhaseChange({ phase: ev.metadata.phase, round: ev.metadata.round || 1 }, true);
+      } else if (ev.type === 'elimination') {
+        onElimination({ name: ev.metadata.targetName, method: ev.metadata.method }, true);
+      } else if (ev.type === 'vote') {
+        onVoteCast({ voter: ev.metadata.actorName }, true);
+      }
+    }
+
+    try {
+      var mRes = await fetch('/api/matches/' + matchId + '/markets');
+      if (mRes.ok) {
+        var mData = await mRes.json();
+        if (mData.markets) onMarketsInit({ markets: mData.markets });
+      }
+    } catch (e) {}
+  } catch (e) {
+    console.error('Catch-up failed:', e);
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* EVENT HANDLERS                          */
+/* ═══════════════════════════════════════ */
+function onMatchStart(data) {
+  players = (data.players || []).map(function(p) {
+    return { name: p.name, archetype: p.archetype || '', trait: p.trait || '', alive: true, role: null };
+  });
+  renderSidebarPlayers();
+  renderTablePlayers();
+  document.getElementById('match-id-display').textContent = '#' + (data.matchId || matchId).slice(-6);
+  addSystemMsg('La partie commence avec ' + players.length + ' joueurs.');
+}
+
+function onPhaseChange(data, silent) {
+  var phase = data.phase;
+  // Normalize phase: 'day1' -> 'day', 'vote3' -> 'vote', etc.
+  if (phase && phase.length > 3) {
+    var base = phase.replace(/[0-9]+$/, '');
+    if (PHASE_LABELS[base]) phase = base;
+  }
+  var round = data.round || 1;
+  currentPhase = phase;
+  currentRound = round;
+
+  // Phase indicator
+  var ind = document.getElementById('phase-indicator');
+  ind.className = phase;
+  document.getElementById('phase-icon').textContent = PHASE_ICONS[phase] || '';
+  document.getElementById('phase-text').textContent = (PHASE_LABELS[phase] || phase.toUpperCase()) + ' ' + round;
+  document.getElementById('round-label').textContent = 'Tour ' + round;
+
+  // Table background
+  var tableArea = document.getElementById('table-area');
+  tableArea.className = phase;
+
+  // Center icon
+  var ci = document.getElementById('center-icon');
+  if (phase === 'day') ci.textContent = '\u2600\uFE0F';
+  else if (phase === 'night') ci.textContent = '\uD83C\uDF19';
+  else ci.textContent = '\uD83D\uDDF3\uFE0F';
+
+  if (!silent) {
+    showPhaseBanner(phase, round);
+    addPhaseMsg(phase, round);
+  }
+}
+
+function onChatMessage(data, silent) {
+  var color = getSpeakerColor(data.speaker);
+
+  // Chat log
+  var el = document.createElement('div');
+  el.className = 'chat-msg';
+  var modelTag = data.modelLabel ? '<span class="chat-model-tag">' + esc(data.modelLabel) + '</span>' : '';
+  var verifyBtn = data.eventId ? '<button class="chat-verify-btn" onclick="showVerify(\'' + data.eventId + '\')" title="Transparence LLM">\uD83D\uDD0D</button>' : '';
+  el.innerHTML = '<span class="chat-speaker" style="color:' + color + '">' + esc(data.speaker) + '</span>' + modelTag + '<span class="chat-text">' + esc(data.text) + '</span>' + verifyBtn;
+  appendChat(el);
+
+  if (!silent) {
+    // Set speaking state on table + sidebar
+    setSpeaking(data.speaker);
+
+    // Show speech bubble
+    showSpeechBubble(data.speaker, data.text);
+  }
+}
+
+function onVoteCast(data, silent) {
+  if (silent) return;
+  var el = document.createElement('div');
+  el.className = 'chat-vote';
+  el.textContent = esc(data.voter) + ' a vote.';
+  appendChat(el);
+}
+
+function onVoteResult(data) {
+  if (data.eliminated) {
+    addSystemMsg('Resultat du vote : ' + data.eliminated + ' est elimine(e).');
+  } else {
+    addSystemMsg('Aucune elimination suite au vote.');
+  }
+  if (data.tally) {
+    var parts = Object.entries(data.tally).map(function(e) { return e[0] + ': ' + e[1]; });
+    addSystemMsg('Votes \u2014 ' + parts.join(', '));
+  }
+}
+
+function onElimination(data, silent) {
+  var method = data.method === 'night_kill' ? 'tue(e) par les loups' : 'elimine(e) par le village';
+
+  // Mark dead
+  var p = players.find(function(x) { return x.name === data.name; });
+  if (p) p.alive = false;
+
+  if (!silent) {
+    // Chat
+    var el = document.createElement('div');
+    el.className = 'chat-elimination';
+    el.textContent = '\u2620\uFE0F ' + data.name + ' a ete ' + method;
+    appendChat(el);
+
+    // Animate elimination
+    animateElimination(data.name);
+  } else {
+    renderSidebarPlayers();
+    renderTablePlayers();
+  }
+}
+
+function onNightKill(data) {
+  var p = players.find(function(x) { return x.name === data.victim; });
+  if (p) p.alive = false;
+
+  var el = document.createElement('div');
+  el.className = 'chat-elimination';
+  el.textContent = '\uD83C\uDF19 ' + data.victim + ' a ete devore(e) durant la nuit (Tour ' + data.round + ')';
+  appendChat(el);
+
+  animateElimination(data.victim);
+}
+
+function onMatchEnd(data) {
+  var side = data.winnerSide;
+  clearSpeaking();
+
+  addSystemMsg('PARTIE TERMINEE \u2014 Victoire des ' + (side === 'wolves' ? 'LOUPS \uD83D\uDC3A' : 'VILLAGEOIS \uD83C\uDFE0') + ' !');
+
+  // Reveal all roles
+  if (data.roles) {
+    data.roles.forEach(function(r) {
+      var p = players.find(function(x) { return x.name === r.name; });
+      if (p) {
+        p.role = r.role;
+        p.alive = r.alive;
+      }
+    });
+    renderSidebarPlayers();
+    renderTablePlayers();
+  }
+
+  // Winner overlay
+  var title = document.getElementById('winner-title');
+  title.textContent = side === 'wolves' ? '\uD83D\uDC3A LOUPS VICTORIEUX' : '\uD83C\uDFE0 VILLAGE SAUVE';
+  title.className = side;
+  document.getElementById('winner-subtitle').textContent = 'La partie est terminee.';
+  var payoutEl = document.getElementById('winner-payout');
+  if (totalPayout > 0) {
+    payoutEl.textContent = '+' + totalPayout.toLocaleString('fr-FR') + ' W gagnes !';
+    spawnConfetti();
+  } else {
+    payoutEl.textContent = '';
+  }
+  document.getElementById('winner-overlay').classList.add('show');
+}
+
+function closeWinner() {
+  document.getElementById('winner-overlay').classList.remove('show');
+}
+
+function newMatch() {
+  // Reset state
+  document.getElementById('winner-overlay').classList.remove('show');
+  players = [];
+  markets = [];
+  myBets = [];
+  pendingBet = null;
+  totalPayout = 0;
+  currentPhase = 'day';
+  currentRound = 0;
+  speakerColors = {};
+  speakerOrder = 0;
+  currentSpeaker = null;
+  if (durationInterval) clearInterval(durationInterval);
+  document.getElementById('chat-log').innerHTML = '';
+  document.getElementById('player-list').innerHTML = '';
+  document.getElementById('player-circle').innerHTML = '';
+  document.getElementById('main-market').innerHTML = '';
+  document.getElementById('markets-scroll').innerHTML = '';
+  renderMyBets();
+
+  if (socket) { socket.disconnect(); socket = null; }
+
+  // Re-launch
+  startMatch();
+}
+
+/* ═══════════════════════════════════════ */
+/* MARKETS HANDLERS                        */
+/* ═══════════════════════════════════════ */
+function onMarketsInit(data) {
+  markets = data.markets || [];
+  renderMarkets();
+}
+
+function onMarketUpdate(data) {
+  var m = markets.find(function(x) { return x.id === data.marketId; });
+  if (!m) return;
+  m.totalYes = data.totalYes;
+  m.totalNo = data.totalNo;
+  m.odds = data.odds;
+  renderMarkets();
+}
+
+function onMarketResolve(data) {
+  var m = markets.find(function(x) { return x.id === data.marketId; });
+  if (!m) return;
+  m.resolved = true;
+  m.result = data.result;
+
+  // Calculate winnings
+  if (data.winnings && socket) {
+    for (var i = 0; i < data.winnings.length; i++) {
+      var w = data.winnings[i];
+      if (w.socketId === socket.id) {
+        totalPayout += w.payout;
+        setBalance(getBalance() + w.payout);
+        showToast('+' + w.payout + ' W gagnes sur "' + m.label + '" !');
+      }
+    }
+  }
+
+  // Update my bets
+  myBets.forEach(function(b) {
+    if (b.marketId === data.marketId) {
+      b.status = (b.side === data.winningSide) ? 'won' : 'lost';
+    }
+  });
+
+  renderMarkets();
+  renderMyBets();
+}
+
+function onBetConfirmed(data) {
+  showToast('Pari place : ' + data.amount + ' W sur ' + (data.side === 'yes' ? 'OUI' : 'NON'));
+}
+
+function onBetError(data) {
+  showToast('Erreur : ' + (data.error || 'Pari refuse'));
+}
+
+/* ═══════════════════════════════════════ */
+/* RENDER SIDEBAR PLAYERS                  */
+/* ═══════════════════════════════════════ */
+function renderSidebarPlayers() {
+  var list = document.getElementById('player-list');
+  list.innerHTML = '';
+
+  players.forEach(function(p, i) {
+    var card = document.createElement('div');
+    card.className = 'player-card' + (!p.alive ? ' eliminated' : '');
+    card.dataset.name = p.name;
+
+    var bg = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    var initial = (p.name || '?')[0].toUpperCase();
+    var statusEmoji = p.alive ? '\uD83D\uDFE2' : '\uD83D\uDC80';
+
+    var roleHtml = '';
+    if (p.role) {
+      var rClass = p.role === 'wolf' ? 'wolf' : 'villager';
+      var rIcon = p.role === 'wolf' ? '\uD83D\uDC3A' : '\uD83C\uDFE0';
+      roleHtml = '<span class="player-role-tag ' + rClass + '">' + rIcon + ' ' + p.role + '</span>';
+    }
+
+    card.innerHTML =
+      '<div class="player-avatar" style="background:' + bg + '">' +
+        initial +
+        '<div class="player-avatar-ring"></div>' +
+      '</div>' +
+      '<div class="player-info">' +
+        '<div class="player-name">' + esc(p.name) + '</div>' +
+        '<div class="player-meta">' + esc(p.trait || p.archetype || '') + '</div>' +
+        roleHtml +
+      '</div>' +
+      '<div class="player-status">' + statusEmoji + '</div>';
+
+    list.appendChild(card);
+  });
+}
+
+/* ═══════════════════════════════════════ */
+/* RENDER TABLE PLAYERS (CIRCLE)           */
+/* ═══════════════════════════════════════ */
+function renderTablePlayers() {
+  var circle = document.getElementById('player-circle');
+  circle.innerHTML = '';
+
+  var n = players.length;
+  if (n === 0) return;
+
+  var tableArea = document.getElementById('table-area');
+  var W = tableArea.offsetWidth;
+  var H = tableArea.offsetHeight;
+  var cx = W / 2;
+  var cy = H / 2;
+  var rx = Math.min(W * 0.38, 320);
+  var ry = Math.min(H * 0.38, 200);
+
+  players.forEach(function(p, i) {
+    var angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    var x = cx + rx * Math.cos(angle);
+    var y = cy + ry * Math.sin(angle);
+
+    var el = document.createElement('div');
+    el.className = 'table-player' + (!p.alive ? ' eliminated' : '');
+    el.dataset.name = p.name;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.transform = 'translate(-50%, -50%)';
+
+    var bg = AVATAR_COLORS[i % AVATAR_COLORS.length];
+    var initial = (p.name || '?')[0].toUpperCase();
+
+    var roleHtml = '';
+    if (p.role) {
+      var rClass = p.role === 'wolf' ? 'wolf' : 'villager';
+      var rIcon = p.role === 'wolf' ? '\uD83D\uDC3A Loup' : '\uD83C\uDFE0 Villageois';
+      roleHtml = '<div class="table-player-role revealed ' + rClass + '">' + rIcon + '</div>';
+    } else {
+      roleHtml = '<div class="table-player-role"></div>';
+    }
+
+    el.innerHTML =
+      '<div class="table-avatar" style="background:' + bg + '">' + initial + '</div>' +
+      '<div class="table-player-name">' + esc(p.name) + '</div>' +
+      roleHtml;
+
+    circle.appendChild(el);
+  });
+}
+
+/* ═══════════════════════════════════════ */
+/* RENDER MARKETS                          */
+/* ═══════════════════════════════════════ */
+function renderMarkets() {
+  // Main market (wolves_win)
+  var mainEl = document.getElementById('main-market');
+  var mainMarket = markets.find(function(m) { return m.type === 'wolves_win'; });
+
+  if (mainMarket) {
+    var odds = mainMarket.odds || { yes: 2.0, no: 2.0 };
+    var total = mainMarket.totalYes + mainMarket.totalNo;
+    var yesPct = total > 0 ? Math.round(mainMarket.totalYes / total * 100) : 50;
+    var noPct = 100 - yesPct;
+
+    var resolvedHtml = '';
+    if (mainMarket.resolved) {
+      resolvedHtml = '<div style="text-align:center;margin-top:10px;font-weight:700;font-size:14px;color:' +
+        (mainMarket.result ? 'var(--danger)' : 'var(--success)') + '">' +
+        (mainMarket.result ? '\uD83D\uDC3A OUI — Loups gagnent' : '\uD83C\uDFE0 NON — Village sauve') + '</div>';
+    }
+
+    mainEl.innerHTML =
+      '<div class="market-main">' +
+        '<div class="market-main-title">\uD83D\uDC3A Les loups gagnent cette partie ?</div>' +
+        '<div class="market-bar-container">' +
+          '<div class="market-bar-yes" style="width:' + yesPct + '%">OUI ' + yesPct + '%</div>' +
+          '<div class="market-bar-no" style="width:' + noPct + '%">NON ' + noPct + '%</div>' +
+        '</div>' +
+        (mainMarket.resolved ? '' :
+        '<div class="market-main-buttons">' +
+          '<button class="btn-bet-yes" data-market="' + mainMarket.id + '" data-side="yes" onclick="openBet(this)">OUI ' + odds.yes.toFixed(2) + '\u00d7</button>' +
+          '<button class="btn-bet-no" data-market="' + mainMarket.id + '" data-side="no" onclick="openBet(this)">NON ' + odds.no.toFixed(2) + '\u00d7</button>' +
+        '</div>') +
+        resolvedHtml +
+        '<div class="market-main-pool">' + total + ' W en jeu</div>' +
+      '</div>';
+  }
+
+  // Other markets
+  var scrollEl = document.getElementById('markets-scroll');
+  scrollEl.innerHTML = '';
+
+  var groups = [
+    { type: 'is_wolf', title: 'IDENTITE' },
+    { type: 'first_eliminated', title: 'PREMIER ELIMINE' },
+  ];
+
+  groups.forEach(function(group) {
+    var gm = markets.filter(function(m) { return m.type === group.type; });
+    if (gm.length === 0) return;
+
+    var titleEl = document.createElement('div');
+    titleEl.className = 'market-group-title';
+    titleEl.textContent = group.title;
+    scrollEl.appendChild(titleEl);
+
+    gm.forEach(function(m) {
+      var card = document.createElement('div');
+      card.className = 'market-card' + (m.resolved ? ' resolved' : '');
+
+      var odds = m.odds || { yes: 2.0, no: 2.0 };
+      var pool = m.totalYes + m.totalNo;
+
+      var resultTag = '';
+      if (m.resolved) {
+        resultTag = '<span class="market-result-tag ' + (m.result ? 'win' : 'lose') + '">' +
+          (m.result ? '\u2713 OUI' : '\u2717 NON') + '</span>';
+      }
+
+      card.innerHTML =
+        '<div class="market-card-label"><span>' + esc(m.label) + '</span>' + resultTag + '</div>' +
+        '<div class="market-card-odds">' +
+          '<button class="btn-yes" data-market="' + m.id + '" data-side="yes" onclick="openBet(this)">OUI ' + odds.yes.toFixed(2) + '\u00d7</button>' +
+          '<button class="btn-no" data-market="' + m.id + '" data-side="no" onclick="openBet(this)">NON ' + odds.no.toFixed(2) + '\u00d7</button>' +
+        '</div>' +
+        (pool > 0 ? '<div class="market-card-pool">' + pool + ' W en jeu</div>' : '');
+
+      scrollEl.appendChild(card);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════ */
+/* BETTING                                 */
+/* ═══════════════════════════════════════ */
+function openBet(btn) {
+  var marketId = btn.dataset.market;
+  var side = btn.dataset.side;
+  var m = markets.find(function(x) { return x.id === marketId; });
+  if (!m || m.resolved) return;
+
+  pendingBet = { marketId: marketId, side: side, odds: m.odds };
+
+  document.getElementById('bet-modal-market').textContent = m.label;
+  var sideTag = document.getElementById('bet-side-tag');
+  sideTag.textContent = side === 'yes' ? 'OUI' : 'NON';
+  sideTag.className = 'bet-side-tag ' + side;
+  document.getElementById('bet-amount').value = 50;
+  document.getElementById('bet-modal-balance').textContent = getBalance().toLocaleString('fr-FR');
+  updateBetPayout();
+  document.getElementById('bet-overlay').classList.add('active');
+  document.getElementById('bet-amount').focus();
+}
+
+function setBetAmount(v) {
+  document.getElementById('bet-amount').value = v;
+  updateBetPayout();
+}
+
+function updateBetPayout() {
+  if (!pendingBet) return;
+  var amount = parseInt(document.getElementById('bet-amount').value, 10) || 0;
+  var odds = pendingBet.side === 'yes' ? pendingBet.odds.yes : pendingBet.odds.no;
+  var payout = Math.round(amount * odds);
+  document.getElementById('bet-payout').textContent = 'Gain potentiel : ' + payout + ' W (' + odds.toFixed(2) + '\u00d7)';
+}
+
+function closeBet() {
+  document.getElementById('bet-overlay').classList.remove('active');
+  pendingBet = null;
+}
+
+function confirmBet() {
+  if (!pendingBet || !socket) return;
+  var amount = parseInt(document.getElementById('bet-amount').value, 10);
+  if (!amount || amount <= 0) return showToast('Montant invalide');
+  if (amount > getBalance()) return showToast('Solde insuffisant');
+
+  setBalance(getBalance() - amount);
+
+  var m = markets.find(function(x) { return x.id === pendingBet.marketId; });
+
+  myBets.push({
+    marketId: pendingBet.marketId,
+    label: m ? m.label : pendingBet.marketId,
+    side: pendingBet.side,
+    amount: amount,
+    status: 'pending'
+  });
+  renderMyBets();
+
+  socket.emit('place_bet', {
+    matchId: matchId,
+    marketId: pendingBet.marketId,
+    side: pendingBet.side,
+    amount: amount,
+  });
+
+  closeBet();
+}
+
+// Bet amount input listener
+document.getElementById('bet-amount').addEventListener('input', updateBetPayout);
+
+/* ═══════════════════════════════════════ */
+/* MY BETS                                 */
+/* ═══════════════════════════════════════ */
+function renderMyBets() {
+  var list = document.getElementById('my-bets-list');
+  if (myBets.length === 0) {
+    list.innerHTML = '<div style="font-size:11px;color:var(--text-muted);text-align:center;padding:8px;">Aucun pari</div>';
+    return;
+  }
+  list.innerHTML = '';
+  myBets.slice().reverse().forEach(function(b) {
+    var item = document.createElement('div');
+    item.className = 'my-bet-item';
+    var statusIcon = b.status === 'won' ? '\u2705' : b.status === 'lost' ? '\u274C' : '\u23F3';
+    item.innerHTML =
+      '<span class="my-bet-label">' + esc(b.label) + '</span>' +
+      '<span class="my-bet-side ' + b.side + '">' + (b.side === 'yes' ? 'OUI' : 'NON') + '</span>' +
+      '<span class="my-bet-amount">' + b.amount + 'W</span>' +
+      '<span class="my-bet-status">' + statusIcon + '</span>';
+    list.appendChild(item);
+  });
+}
+
+/* ═══════════════════════════════════════ */
+/* SPEAKING & SPEECH BUBBLES               */
+/* ═══════════════════════════════════════ */
+function setSpeaking(name) {
+  clearSpeaking();
+  currentSpeaker = name;
+
+  // Sidebar
+  document.querySelectorAll('.player-card').forEach(function(el) {
+    if (el.dataset.name === name) el.classList.add('speaking');
+  });
+  // Table
+  document.querySelectorAll('.table-player').forEach(function(el) {
+    if (el.dataset.name === name) el.classList.add('speaking');
+  });
+}
+
+function clearSpeaking() {
+  currentSpeaker = null;
+  document.querySelectorAll('.player-card.speaking').forEach(function(el) { el.classList.remove('speaking'); });
+  document.querySelectorAll('.table-player.speaking').forEach(function(el) { el.classList.remove('speaking'); });
+}
+
+function showSpeechBubble(name, text) {
+  // Remove existing bubble for this player
+  if (speechBubbleTimers[name]) {
+    clearTimeout(speechBubbleTimers[name]);
+    var existing = document.querySelector('.table-player[data-name="' + name + '"] .speech-bubble');
+    if (existing) existing.remove();
+  }
+
+  var playerEl = document.querySelector('.table-player[data-name="' + name + '"]');
+  if (!playerEl) return;
+
+  var truncated = text.length > 120 ? text.slice(0, 117) + '...' : text;
+  var bubble = document.createElement('div');
+  bubble.className = 'speech-bubble';
+  bubble.textContent = truncated;
+  playerEl.appendChild(bubble);
+
+  speechBubbleTimers[name] = setTimeout(function() {
+    bubble.style.animation = 'fadeOut 0.5s ease forwards';
+    setTimeout(function() { bubble.remove(); }, 500);
+    delete speechBubbleTimers[name];
+  }, 8000);
+}
+
+/* ═══════════════════════════════════════ */
+/* ELIMINATION ANIMATION                   */
+/* ═══════════════════════════════════════ */
+function animateElimination(name) {
+  // Sidebar
+  var sideCard = document.querySelector('.player-card[data-name="' + name + '"]');
+  if (sideCard) {
+    sideCard.classList.add('eliminating');
+    setTimeout(function() {
+      sideCard.classList.remove('eliminating');
+      sideCard.classList.add('eliminated');
+      var nameEl = sideCard.querySelector('.player-name');
+      if (nameEl) nameEl.style.textDecoration = 'line-through';
+      var statusEl = sideCard.querySelector('.player-status');
+      if (statusEl) statusEl.textContent = '\uD83D\uDC80';
+    }, 600);
+  }
+
+  // Table
+  var tablePlayer = document.querySelector('.table-player[data-name="' + name + '"]');
+  if (tablePlayer) {
+    tablePlayer.classList.add('eliminating');
+    setTimeout(function() {
+      tablePlayer.classList.remove('eliminating');
+      tablePlayer.classList.add('eliminated');
+    }, 700);
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* UI HELPERS                              */
+/* ═══════════════════════════════════════ */
+function addSystemMsg(text) {
+  var el = document.createElement('div');
+  el.className = 'chat-system';
+  el.textContent = text;
+  appendChat(el);
+}
+
+function addPhaseMsg(phase, round) {
+  var el = document.createElement('div');
+  el.className = 'chat-phase';
+  el.textContent = (PHASE_ICONS[phase] || '') + ' ' + (PHASE_LABELS[phase] || phase) + ' \u2014 Tour ' + round;
+  appendChat(el);
+}
+
+function appendChat(el) {
+  var log = document.getElementById('chat-log');
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+function getSpeakerColor(name) {
+  if (!speakerColors[name]) {
+    speakerColors[name] = SPEAKER_COLORS[speakerOrder % SPEAKER_COLORS.length];
+    speakerOrder++;
+  }
+  return speakerColors[name];
+}
+
+function showPhaseBanner(phase, round) {
+  var banner = document.getElementById('phase-banner');
+  var text = document.getElementById('phase-banner-text');
+  var sub = document.getElementById('phase-banner-sub');
+
+  text.textContent = PHASE_LABELS[phase] || phase.toUpperCase();
+  text.className = phase;
+  sub.textContent = 'Tour ' + round;
+
+  banner.style.opacity = '1';
+  banner.className = 'show';
+
+  setTimeout(function() { banner.className = 'hide'; }, 2200);
+  setTimeout(function() { banner.className = ''; banner.style.opacity = '0'; }, 2800);
+}
+
+function showToast(msg) {
+  var toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'show';
+  setTimeout(function() { toast.className = ''; }, 3500);
+}
+
+function esc(s) {
+  var d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+/* ═══════════════════════════════════════ */
+/* VERIFY MODAL                            */
+/* ═══════════════════════════════════════ */
+async function showVerify(eventId) {
+  var overlay = document.getElementById('verify-overlay');
+  var modal = document.getElementById('verify-modal-content');
+  modal.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Chargement...</p>';
+  overlay.classList.add('active');
+
+  try {
+    var res = await fetch('/api/matches/' + matchId + '/events/' + eventId + '/raw');
+    if (!res.ok) throw new Error('Erreur ' + res.status);
+    var d = await res.json();
+
+    var html = '<h3>TRANSPARENCE LLM</h3>';
+
+    if (d.llm) {
+      html += '<div class="verify-meta">';
+      html += '<div class="verify-meta-item">Modele : <span>' + esc(d.llm.modelLabel || d.llm.model) + '</span></div>';
+      html += '<div class="verify-meta-item">Provider : <span>' + esc(d.llm.provider) + '</span></div>';
+      html += '<div class="verify-meta-item">Latence : <span>' + d.llm.latency_ms + ' ms</span></div>';
+      html += '<div class="verify-meta-item">Tokens in : <span>' + (d.llm.usage && d.llm.usage.input_tokens || 0) + '</span></div>';
+      html += '<div class="verify-meta-item">Tokens out : <span>' + (d.llm.usage && d.llm.usage.output_tokens || 0) + '</span></div>';
+      html += '</div>';
+      html += '<div class="verify-section"><label>PROMPT SYSTEME</label><pre>' + esc(d.llm.systemPrompt) + '</pre></div>';
+      html += '<div class="verify-section"><label>MESSAGE ENVOYE</label><pre>' + esc(d.llm.inputMessages ? d.llm.inputMessages.map(function(m) { return m.content; }).join('\n') : '') + '</pre></div>';
+      html += '<div class="verify-section"><label>REPONSE BRUTE</label><pre>' + esc(d.llm.rawResponse) + '</pre></div>';
+    } else {
+      html += '<p style="color:var(--text-muted)">Pas de donnees LLM pour cet evenement.</p>';
+    }
+
+    html += '<button class="btn-close-modal" onclick="closeVerify()">Fermer</button>';
+    modal.innerHTML = html;
+  } catch (e) {
+    modal.innerHTML = '<p style="color:var(--danger)">' + esc(e.message) + '</p><button class="btn-close-modal" onclick="closeVerify()">Fermer</button>';
+  }
+}
+
+async function showGlobalVerify() {
+  var overlay = document.getElementById('verify-overlay');
+  var modal = document.getElementById('verify-modal-content');
+  modal.innerHTML = '<p style="color:var(--text-muted);padding:20px;">Chargement des evenements...</p>';
+  overlay.classList.add('active');
+
+  try {
+    var res = await fetch('/api/matches/' + matchId + '/events');
+    if (!res.ok) throw new Error('Erreur ' + res.status);
+    var events = await res.json();
+
+    var chatEvents = events.filter(function(e) { return e.type === 'chat' && e.metadata && e.metadata.llm; });
+    var models = {};
+    var totalLatency = 0;
+    var totalTokensIn = 0;
+    var totalTokensOut = 0;
+
+    chatEvents.forEach(function(e) {
+      var llm = e.metadata.llm;
+      var label = llm.modelLabel || llm.model || 'inconnu';
+      if (!models[label]) models[label] = { count: 0, provider: llm.provider || '?' };
+      models[label].count++;
+      totalLatency += (llm.latency_ms || 0);
+      totalTokensIn += (llm.usage && llm.usage.input_tokens) || 0;
+      totalTokensOut += (llm.usage && llm.usage.output_tokens) || 0;
+    });
+
+    var avgLatency = chatEvents.length > 0 ? Math.round(totalLatency / chatEvents.length) : 0;
+
+    var html = '<h3>TRANSPARENCE LLM</h3>';
+    html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Chaque message de cette partie est genere par un LLM. Voici les statistiques.</p>';
+
+    html += '<div class="verify-meta">';
+    html += '<div class="verify-meta-item">Messages IA : <span>' + chatEvents.length + '</span></div>';
+    html += '<div class="verify-meta-item">Latence moy. : <span>' + avgLatency + ' ms</span></div>';
+    html += '<div class="verify-meta-item">Tokens in : <span>' + totalTokensIn.toLocaleString('fr-FR') + '</span></div>';
+    html += '<div class="verify-meta-item">Tokens out : <span>' + totalTokensOut.toLocaleString('fr-FR') + '</span></div>';
+    html += '</div>';
+
+    html += '<div class="verify-section"><label>MODELES UTILISES</label>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;">';
+    Object.entries(models).forEach(function(entry) {
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;">';
+      html += '<span style="color:var(--accent-cyan);font-weight:600;font-size:13px;">' + esc(entry[0]) + '</span>';
+      html += '<span style="font-size:11px;color:var(--text-muted);">' + esc(entry[1].provider) + ' &middot; ' + entry[1].count + ' messages</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+
+    html += '<div class="verify-section"><label>CONCEPT</label>';
+    html += '<pre>Chaque personnage recoit un prompt systeme avec sa personnalite, son role (loup ou villageois), et l\'historique des discussions. Le LLM genere sa reponse en temps reel. Cliquez sur la loupe a cote de chaque message dans le chat pour voir le prompt exact.</pre>';
+    html += '</div>';
+
+    html += '<button class="btn-close-modal" onclick="closeVerify()">Fermer</button>';
+    modal.innerHTML = html;
+  } catch (e) {
+    modal.innerHTML = '<p style="color:var(--danger)">' + esc(e.message) + '</p><button class="btn-close-modal" onclick="closeVerify()">Fermer</button>';
+  }
+}
+
+function closeVerify() {
+  document.getElementById('verify-overlay').classList.remove('active');
+}
+
+/* ═══════════════════════════════════════ */
+/* DURATION TIMER                          */
+/* ═══════════════════════════════════════ */
+function startDurationTimer() {
+  matchStartTime = Date.now();
+  durationInterval = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - matchStartTime) / 1000);
+    var m = Math.floor(elapsed / 60);
+    var s = elapsed % 60;
+    document.getElementById('match-duration').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  }, 1000);
+}
+
+/* ═══════════════════════════════════════ */
+/* NIGHT STARS                             */
+/* ═══════════════════════════════════════ */
+function generateStars() {
+  var container = document.getElementById('night-stars');
+  for (var i = 0; i < 40; i++) {
+    var star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 5 + 's';
+    star.style.animationDuration = (2 + Math.random() * 4) + 's';
+    container.appendChild(star);
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* CONFETTI                                */
+/* ═══════════════════════════════════════ */
+function spawnConfetti() {
+  var colors = ['#7C3AED', '#06B6D4', '#FACC15', '#EF4444', '#10B981', '#F59E0B', '#A78BFA'];
+  for (var i = 0; i < 60; i++) {
+    var el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDelay = Math.random() * 2 + 's';
+    el.style.animationDuration = (2 + Math.random() * 2) + 's';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    el.style.width = (4 + Math.random() * 8) + 'px';
+    el.style.height = (4 + Math.random() * 8) + 'px';
+    document.body.appendChild(el);
+    setTimeout(function() { el.remove(); }, 5000);
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* MOBILE VIEW SWITCHING                   */
+/* ═══════════════════════════════════════ */
+function switchMobileView(view) {
+  document.querySelectorAll('.mobile-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+
+  var center = document.getElementById('center');
+  var sidebar = document.getElementById('sidebar');
+  var betting = document.getElementById('betting-panel');
+
+  center.classList.remove('mobile-hidden');
+  sidebar.classList.remove('mobile-visible');
+  betting.classList.remove('mobile-visible');
+
+  if (view === 'bets') {
+    center.classList.add('mobile-hidden');
+    betting.classList.add('mobile-visible');
+  }
+}
+
+/* ═══════════════════════════════════════ */
+/* RESIZE HANDLER                          */
+/* ═══════════════════════════════════════ */
+var resizeTimer;
+window.addEventListener('resize', function() {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(function() {
+    if (players.length > 0) renderTablePlayers();
+  }, 150);
+});
+
+/* ═══════════════════════════════════════ */
+/* KEYBOARD                                */
+/* ═══════════════════════════════════════ */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeVerify();
+    closeBet();
+    closeWinner();
+  }
+});
+
+/* ═══════════════════════════════════════ */
+/* INIT                                    */
+/* ═══════════════════════════════════════ */
+generateStars();
+updateBalanceUI();
+
+// Show balance on start screen
+var startBalEl = document.getElementById('start-balance');
+if (startBalEl) startBalEl.textContent = getBalance().toLocaleString('fr-FR');
+</script>
+</body>
+</html>
