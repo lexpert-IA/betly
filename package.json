@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "main": "index.js",
   "scripts": {
+    "build": "cd web && npm install && npm run build",
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test:agents": "node scripts/testAgents.js"
